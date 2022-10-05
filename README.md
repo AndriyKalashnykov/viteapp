@@ -1,5 +1,7 @@
 # viteapp
 
+ReactJS + Vite
+
 ## Requirements
 
 * [nvm](https://github.com/nvm-sh/nvm#install--update-script)

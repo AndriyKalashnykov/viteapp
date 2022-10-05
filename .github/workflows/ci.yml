@@ -43,5 +43,5 @@ jobs:
         platforms: linux/amd64
         push: true
         tags: ${{ github.actor }}/viteapp:latest
-        cache-from: ${{ sgithub.actor }}/viteapp:latest
+        cache-from: ${{ github.actor }}/viteapp:latest
         cache-to: ${{ github.actor }}/viteapp:latest

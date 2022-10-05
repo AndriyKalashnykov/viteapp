@@ -20,6 +20,18 @@ pnpm build
 pnpm run dev
 ```
 
+## Release
+
+Set version as env variable
+```bash
+export VERSION=0.0.1
+```
+
+run release task
+```bash
+make release
+```
+
 ## References
 * https://fullstackcode.dev/2022/01/30/creating-react-js-app-using-vite-2-0/
 * https://blog.logrocket.com/vite-3-vs-create-react-app-comparison-migration-guide/

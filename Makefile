@@ -34,3 +34,22 @@ run: install
 #image: @ Build Docker Image
 image: install build
 	docker build -t viteapp .
+
+#check-version: @ Ensure VERSION variable is set
+check-version:
+ifndef VERSION
+	$(error VERSION is undefined)
+endif
+	@echo -n ""
+
+#release: @ Creates and pushes tag for the current $VERSION
+release: check-version tag-release
+
+#tag-release: @ Create and push a new tag
+tag-release: check-version
+	@echo -n "Are you sure to create and push ${VERSION} tag? [y/N] " && read ans && [ $${ans:-N} = y ]
+	@git commit -s -m "Cut ${VERSION} release"
+	@git tag ${VERSION}
+	@git push origin ${VERSION}
+	@git push
+	@echo "Done."

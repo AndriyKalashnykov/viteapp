@@ -52,10 +52,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GH_ACCESS_TOKEN }}
 
-
-
-    -
-      name: Build and push
+    - name: Build and push
       uses: docker/build-push-action@v3.1.1
       with:
         context: .
@@ -65,3 +62,5 @@ jobs:
         tags: andriykalashnykov/viteapp:latest
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache
+        secrets: |
+          GIT_AUTH_TOKEN=${{ github.token }}

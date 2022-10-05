@@ -49,6 +49,6 @@ jobs:
         file: ./Dockerfile
         platforms: linux/amd64
         push: true
-        tags: {{ .Env.OWNER_LC }}/viteapp:latest
+        tags: andriykalashnykov/viteapp:latest
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache

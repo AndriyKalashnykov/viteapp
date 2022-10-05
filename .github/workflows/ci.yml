@@ -63,4 +63,4 @@ jobs:
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache
         secrets: |
-          GIT_AUTH_TOKEN=${{ github.token }}
+          GIT_AUTH_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}

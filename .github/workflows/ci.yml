@@ -48,6 +48,6 @@ jobs:
         file: ./Dockerfile
         platforms: linux/amd64
         push: true
-        tags: ${{ OWNER_LC }}/viteapp:latest
-        cache-from: ${{ OWNER_LC }}/viteapp:latest
-        cache-to: ${{ OWNER_LC }}/viteapp:latest
+        tags: ${{ .Env.OWNER_LC }}/viteapp:latest
+        cache-from: ${{ .Env.OWNER_LC }}/viteapp:latest
+        cache-to: ${{ .Env.OWNER_LC }}/viteapp:latest

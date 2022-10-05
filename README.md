@@ -9,6 +9,27 @@
   ```
 * [pnpm](https://pnpm.io/installation)
 
+## Help 
+
+```bash
+$ make help
+```
+```text
+Usage: make COMMAND
+Commands :
+help           - List available tasks
+clean          - Cleanup
+install        - Install
+build          - Build
+update         - Update
+upgrade        - Upgrade
+run            - Run
+image          - Build Docker Image
+check-version  - Ensure VERSION variable is set
+release        - Creates and pushes tag for the current $VERSION
+tag-release    - Create and push a new tag
+
+```
 
 ## Create react app
 

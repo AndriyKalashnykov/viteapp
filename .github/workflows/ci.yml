@@ -1,4 +1,4 @@
-name: CI
+name: viteapp CI
 
 on:
   push:
@@ -50,7 +50,6 @@ jobs:
       with:
         # list of Docker images to use as base name for tags
         images: |
-          ${{ env.OWNER_LC }}/viteapp
           ghcr.io/${{ env.OWNER_LC }}/viteapp
         # generate Docker tags based on the following events/attributes
         tags: |

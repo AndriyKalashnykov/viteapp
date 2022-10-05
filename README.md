@@ -45,7 +45,7 @@ pnpm run dev
 
 Set version as env variable
 ```bash
-export VERSION=0.0.1
+export VERSION=v0.0.1
 ```
 
 run release task

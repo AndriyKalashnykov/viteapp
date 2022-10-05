@@ -35,6 +35,12 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Convert actor to lower case
+      run: |
+        echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
+      env:
+        OWNER: '${{ github.repository_owner }}'
+
     - name: Build and push
       uses: docker/build-push-action@v3.1.1
       with:
@@ -42,6 +48,6 @@ jobs:
         file: ./Dockerfile
         platforms: linux/amd64
         push: true
-        tags: ${{ github.actor }}/viteapp:latest
-        cache-from: ${{ github.actor }}/viteapp:latest
-        cache-to: ${{ github.actor }}/viteapp:latest
+        tags: ${{ OWNER_LC }}/viteapp:latest
+        cache-from: ${{ OWNER_LC }}/viteapp:latest
+        cache-to: ${{ OWNER_LC }}/viteapp:latest

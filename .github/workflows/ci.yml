@@ -62,8 +62,7 @@ jobs:
         file: ./Dockerfile
         platforms: linux/amd64
         push: true
-        tags: ghcr.io/andriykalashnykov/viteapp:latest
+        tags: ghcr.io/{{ env.OWNER_LC }}/viteapp:latest
+        label: org.opencontainers.image.source https://github.com/${{ env.OWNER_LC }}/viteapp
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache
-#        secrets: |
-#          GIT_AUTH_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}

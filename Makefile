@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-cleanup:
+clean:
 	@rm -rf node_modules/ dist/
 
 install:
@@ -17,3 +17,6 @@ upgrade:
 
 run: install
 	pnpm dev
+
+image: install build
+	docker build -t viteapp .

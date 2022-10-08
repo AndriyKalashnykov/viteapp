@@ -6,9 +6,9 @@ ReactJS + Vite
 
 * [nvm](https://github.com/nvm-sh/nvm#install--update-script)
   ```bash
-  nvm install 18
-  nvm use 18
-  nvm alias default 18
+  nvm install v18.10.0
+  nvm use v18.10.0
+  nvm alias default v18.10.0
   npm install npm --global # Upgrade npm to the latest version
   ```
 * [pnpm](https://pnpm.io/installation)

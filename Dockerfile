@@ -1,4 +1,4 @@
-FROM node:17-alpine AS builder
+FROM node:18-alpine AS builder
 RUN npm --global install pnpm
 WORKDIR /app
 COPY package.json ./

@@ -14,6 +14,9 @@ ReactJS + Vite
   npm install npm --global
   ```
 * [pnpm](https://pnpm.io/installation)
+  ```bash
+  npm install -g pnpm
+  ```
 
 ## Help 
 

@@ -16,7 +16,7 @@ install:
 	pnpm install
 
 #build: @ Build
-build:
+build: install
 	pnpm build
 
 #update: @ Update
@@ -33,7 +33,7 @@ run: install
 
 #image: @ Build Docker Image
 image: install build
-	docker build -t viteapp .
+	docker build -t viteapp:v0.0.1 .
 
 #check-version: @ Ensure VERSION variable is set
 check-version:

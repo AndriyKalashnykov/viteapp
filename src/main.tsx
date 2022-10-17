@@ -3,7 +3,6 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import { DevSupport } from "@react-buddy/ide-toolbox";
-import { ComponentPreviews, useInitial } from "./dev";
 import reportWebVitals from "./reportWebVitals";
 import { reportHandler } from "./reportHandler";
 
@@ -26,12 +25,7 @@ const root = ReactDOM.createRoot(
 root.render(
   <React.StrictMode>
     <ThemeContext.Provider value={themes.dark}>
-      <DevSupport
-        ComponentPreviews={ComponentPreviews}
-        useInitialHook={useInitial}
-      >
-        <App />
-      </DevSupport>
+      <App />
     </ThemeContext.Provider>
   </React.StrictMode>
 );

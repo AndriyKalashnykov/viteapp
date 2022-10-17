@@ -15,6 +15,7 @@ specifiers:
   react: ^18.2.0
   react-dom: ^18.2.0
   react-router-dom: ^6.4.2
+  terser: ^5.15.1
   typescript: ^4.8.4
   vite: ^3.1.8
   vite-plugin-chunk-split: ^0.4.1
@@ -35,8 +36,9 @@ devDependencies:
   husky: 8.0.1
   prettier: 2.7.1
   pretty-quick: 3.1.3_prettier@2.7.1
+  terser: 5.15.1
   typescript: 4.8.4
-  vite: 3.1.8
+  vite: 3.1.8_terser@5.15.1
   vite-plugin-chunk-split: 0.4.1_vite@3.1.8
 
 packages:
@@ -457,6 +459,16 @@ packages:
     engines: { node: ">=6.0.0" }
     dev: true
 
+  /@jridgewell/source-map/0.3.2:
+    resolution:
+      {
+        integrity: sha512-m7O9o2uR8k2ObDysZYzdfhb08VuEml5oWGiosa1VdaPZ/A6QyPkAJuwN0Q1lhULOf6B7MtQmHENS743hWtCrgw==,
+      }
+    dependencies:
+      "@jridgewell/gen-mapping": 0.3.2
+      "@jridgewell/trace-mapping": 0.3.17
+    dev: true
+
   /@jridgewell/sourcemap-codec/1.4.14:
     resolution:
       {
@@ -546,9 +558,18 @@ packages:
       "@babel/plugin-transform-react-jsx-source": 7.18.6_@babel+core@7.19.3
       magic-string: 0.26.7
       react-refresh: 0.14.0
-      vite: 3.1.8
+      vite: 3.1.8_terser@5.15.1
     transitivePeerDependencies:
       - supports-color
+    dev: true
+
+  /acorn/8.8.0:
+    resolution:
+      {
+        integrity: sha512-QOxyigPVrpZ2GXT+PFyZTl6TtOFc5egxHIP9IlQ+RbupQuX4RkT/Bee4/kQuC02Xkzg84JcT7oLYtDIQxp+v7w==,
+      }
+    engines: { node: ">=0.4.0" }
+    hasBin: true
     dev: true
 
   /ansi-styles/3.2.1:
@@ -626,6 +647,13 @@ packages:
       update-browserslist-db: 1.0.10_browserslist@4.21.4
     dev: true
 
+  /buffer-from/1.1.2:
+    resolution:
+      {
+        integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==,
+      }
+    dev: true
+
   /caniuse-lite/1.0.30001420:
     resolution:
       {
@@ -686,6 +714,13 @@ packages:
     resolution:
       {
         integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==,
+      }
+    dev: true
+
+  /commander/2.20.3:
+    resolution:
+      {
+        integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==,
       }
     dev: true
 
@@ -1598,6 +1633,24 @@ packages:
     engines: { node: ">=0.10.0" }
     dev: true
 
+  /source-map-support/0.5.21:
+    resolution:
+      {
+        integrity: sha512-uBHU3L3czsIyYXKX88fdrGovxdSCoTGDRZ6SYXtSRxLZUzHg5P/66Ht6uoUlHu9EZod+inXhKo3qQgwXUT/y1w==,
+      }
+    dependencies:
+      buffer-from: 1.1.2
+      source-map: 0.6.1
+    dev: true
+
+  /source-map/0.6.1:
+    resolution:
+      {
+        integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==,
+      }
+    engines: { node: ">=0.10.0" }
+    dev: true
+
   /sourcemap-codec/1.4.8:
     resolution:
       {
@@ -1641,6 +1694,20 @@ packages:
     engines: { node: ">= 0.4" }
     dev: true
 
+  /terser/5.15.1:
+    resolution:
+      {
+        integrity: sha512-K1faMUvpm/FBxjBXud0LWVAGxmvoPbZbfTCYbSgaaYQaIXI3/TdI7a7ZGA73Zrou6Q8Zmz3oeUTsp/dj+ag2Xw==,
+      }
+    engines: { node: ">=10" }
+    hasBin: true
+    dependencies:
+      "@jridgewell/source-map": 0.3.2
+      acorn: 8.8.0
+      commander: 2.20.3
+      source-map-support: 0.5.21
+    dev: true
+
   /to-fast-properties/2.0.0:
     resolution:
       {
@@ -1682,10 +1749,10 @@ packages:
     dependencies:
       es-module-lexer: 1.0.5
       magic-string: 0.26.7
-      vite: 3.1.8
+      vite: 3.1.8_terser@5.15.1
     dev: true
 
-  /vite/3.1.8:
+  /vite/3.1.8_terser@5.15.1:
     resolution:
       {
         integrity: sha512-m7jJe3nufUbuOfotkntGFupinL/fmuTNuQmiVE7cH2IZMuf4UbfbGYMUT3jVWgGYuRVLY9j8NnrRqgw5rr5QTg==,
@@ -1711,6 +1778,7 @@ packages:
       postcss: 8.4.18
       resolve: 1.22.1
       rollup: 2.78.1
+      terser: 5.15.1
     optionalDependencies:
       fsevents: 2.3.2
     dev: true

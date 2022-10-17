@@ -2,9 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import App from "./App";
-import { DevSupport } from "@react-buddy/ide-toolbox";
 import reportWebVitals from "./reportWebVitals";
-import { reportHandler } from "./reportHandler";
 
 const themes = {
   light: {

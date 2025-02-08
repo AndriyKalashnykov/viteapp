@@ -13,8 +13,8 @@ clean:
 
 #setup: @ Setup environment and tools
 setup:
-	@npx pretty-quick install
-	@npx husky install
+	@npx pretty-quick install -g
+	@npx husky install -g
 
 #install: @ Install
 install:

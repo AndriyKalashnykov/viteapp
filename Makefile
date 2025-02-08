@@ -11,6 +11,11 @@ help:
 clean:
 	@rm -rf node_modules/ dist/
 
+#setup: @ Setup environment and tools
+setup:
+	@npx pretty-quick install
+	@npx husky install
+
 #install: @ Install
 install:
 	pnpm install

@@ -8,9 +8,9 @@ ReactJS + Vite
 - [nvm](https://github.com/nvm-sh/nvm#install--update-script)
   ```bash
   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v$(curl -sL https://api.github.com/repos/nvm-sh/nvm/releases/latest  | grep '"tag_name":' | awk -F '"' '{printf("%s",$4)}' | cut -c 2-)/install.sh | bash
-  nvm install v18.10.0
-  nvm use v18.10.0
-  nvm alias default v18.10.0
+  nvm install v22.13.1
+  nvm use v22.13.1
+  nvm alias default v22.13.1
   npm install npm --global
   ```
 - [pnpm](https://pnpm.io/installation)

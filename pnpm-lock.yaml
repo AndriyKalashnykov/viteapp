@@ -26,7 +26,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^22.13.1
-        version: 22.13.1
+        version: 22.13.4
       '@types/react':
         specifier: ^19.0.8
         version: 19.0.8
@@ -35,7 +35,7 @@ importers:
         version: 19.0.3(@types/react@19.0.8)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@6.1.0(@types/node@22.13.1)(terser@5.38.2))
+        version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(terser@5.38.2))
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -53,10 +53,10 @@ importers:
         version: 5.7.3
       vite:
         specifier: ^6.1.0
-        version: 6.1.0(@types/node@22.13.1)(terser@5.38.2)
+        version: 6.1.0(@types/node@22.13.4)(terser@5.38.2)
       vite-plugin-chunk-split:
         specifier: ^0.5.0
-        version: 0.5.0(vite@6.1.0(@types/node@22.13.1)(terser@5.38.2))
+        version: 0.5.0(vite@6.1.0(@types/node@22.13.4)(terser@5.38.2))
       web-vitals:
         specifier: ^4.2.4
         version: 4.2.4
@@ -433,8 +433,8 @@ packages:
   '@types/gensync@1.0.4':
     resolution: {integrity: sha512-C3YYeRQWp2fmq9OryX+FoDy8nXS6scQ7dPptD8LnFDAUNcKWJjXQKDNJD3HVm+kOUsXhTOkpi69vI4EuAr95bA==}
 
-  '@types/node@22.13.1':
-    resolution: {integrity: sha512-jK8uzQlrvXqEU91UxiK5J7pKHyzgnI1Qnl0QDHIgVGuolJhRb9EEl28Cj9b3rGR8B2lhFCtvIm5os8lFnO/1Ew==}
+  '@types/node@22.13.4':
+    resolution: {integrity: sha512-ywP2X0DYtX3y08eFVx5fNIw7/uIv8hYUKgXoK8oayJlLnKcRfEYCxWMVE1XagUdVtCJlZT1AU4LXEABW+L1Peg==}
 
   '@types/react-dom@19.0.3':
     resolution: {integrity: sha512-0Knk+HJiMP/qOZgMyNFamlIjw9OFCsyC2ZbigmEEyXXixgre6IQpm/4V+r3qH4GC1JPvRJKInw+on2rV6YZLeA==}
@@ -1106,7 +1106,7 @@ snapshots:
 
   '@types/gensync@1.0.4': {}
 
-  '@types/node@22.13.1':
+  '@types/node@22.13.4':
     dependencies:
       undici-types: 6.20.0
 
@@ -1118,14 +1118,14 @@ snapshots:
     dependencies:
       csstype: 3.1.3
 
-  '@vitejs/plugin-react@4.3.4(vite@6.1.0(@types/node@22.13.1)(terser@5.38.2))':
+  '@vitejs/plugin-react@4.3.4(vite@6.1.0(@types/node@22.13.4)(terser@5.38.2))':
     dependencies:
       '@babel/core': 7.26.8
       '@babel/plugin-transform-react-jsx-self': 7.25.9(@babel/core@7.26.8)
       '@babel/plugin-transform-react-jsx-source': 7.25.9(@babel/core@7.26.8)
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.2
-      vite: 6.1.0(@types/node@22.13.1)(terser@5.38.2)
+      vite: 6.1.0(@types/node@22.13.4)(terser@5.38.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -1403,20 +1403,20 @@ snapshots:
       escalade: 3.2.0
       picocolors: 1.1.1
 
-  vite-plugin-chunk-split@0.5.0(vite@6.1.0(@types/node@22.13.1)(terser@5.38.2)):
+  vite-plugin-chunk-split@0.5.0(vite@6.1.0(@types/node@22.13.4)(terser@5.38.2)):
     dependencies:
       es-module-lexer: 1.6.0
       import-meta-resolve: 4.1.0
       magic-string: 0.30.17
-      vite: 6.1.0(@types/node@22.13.1)(terser@5.38.2)
+      vite: 6.1.0(@types/node@22.13.4)(terser@5.38.2)
 
-  vite@6.1.0(@types/node@22.13.1)(terser@5.38.2):
+  vite@6.1.0(@types/node@22.13.4)(terser@5.38.2):
     dependencies:
       esbuild: 0.24.2
       postcss: 8.5.1
       rollup: 4.34.6
     optionalDependencies:
-      '@types/node': 22.13.1
+      '@types/node': 22.13.4
       fsevents: 2.3.3
       terser: 5.38.2
 

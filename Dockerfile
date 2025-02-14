@@ -11,7 +11,7 @@ COPY . .
 RUN pnpm build
 
 # https://hub.docker.com/r/nginxinc/nginx-unprivileged/tags
-FROM nginxinc/nginx-unprivileged:1.27.3 AS server
+FROM nginxinc/nginx-unprivileged:1.27.4 AS server
 COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder ./app/dist /usr/share/nginx/html
 EXPOSE 8080

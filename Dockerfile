@@ -4,7 +4,6 @@ RUN apk --no-cache add git
 RUN npm --global install pnpm && pnpm self-update
 WORKDIR /app
 COPY package.json ./
-COPY pnpm-lock.yaml ./
 COPY .npmrc ./
 RUN pnpm install 
 COPY . .

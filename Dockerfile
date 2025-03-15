@@ -1,12 +1,12 @@
 # https://hub.docker.com/_/node/tags
 FROM node:22.14.0-alpine AS builder
 RUN apk --no-cache add git
-RUN npm --global install pnpm
+RUN npm --global install pnpm && pnpm self-update
 WORKDIR /app
 COPY package.json ./
 COPY pnpm-lock.yaml ./
 COPY .npmrc ./
-RUN pnpm install
+RUN pnpm install 
 COPY . .
 RUN pnpm build
 

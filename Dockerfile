@@ -5,9 +5,11 @@ RUN npm --global install pnpm && pnpm self-update
 WORKDIR /app
 COPY package.json ./
 COPY .npmrc ./
-RUN pnpm install 
+RUN pnpm install
+# RUN npm install --legacy-peer-deps
 COPY . .
 RUN pnpm build
+#RUN npm run build
 
 # https://hub.docker.com/r/nginxinc/nginx-unprivileged/tags
 FROM nginxinc/nginx-unprivileged:1.27.4 AS server

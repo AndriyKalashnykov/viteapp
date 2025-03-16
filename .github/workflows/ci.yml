@@ -30,12 +30,12 @@ jobs:
 
       - name: Install
         run: |
-          npm install --legacy-peer-deps
+          pnpm install
 
       - name: Build
         run: |
           set -e
-          npm run build
+          pnpm build
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3.6.0

@@ -58,3 +58,7 @@ tag-release: check-version
 	@git push origin ${VERSION}
 	@git push
 	@echo "Done."
+
+renovate:
+	@set RENOVATE_TOKEN="YOUR-GITHUB-TOKEN"
+	@LOG_LEVEL=debug npx renovate --dry-run --platform=local --repository-cache=reset

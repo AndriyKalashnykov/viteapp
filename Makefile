@@ -60,5 +60,4 @@ tag-release: check-version
 	@echo "Done."
 
 renovate:
-	@set RENOVATE_TOKEN="YOUR-GITHUB-TOKEN"
-	@LOG_LEVEL=debug npx renovate --dry-run --platform=local --repository-cache=reset
+	@LOG_LEVEL=debug npx renovate --dry-run=full --platform=local --repository-cache=reset --token=$(GITHUB_TOKEN)

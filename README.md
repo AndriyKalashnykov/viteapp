@@ -29,6 +29,7 @@ Usage: make COMMAND
 Commands :
 help           - List available tasks
 clean          - Cleanup
+setup          - Setup environment and tools
 install        - Install
 build          - Build
 update         - Update
@@ -38,7 +39,6 @@ image          - Build Docker Image
 check-version  - Ensure VERSION variable is set
 release        - Creates and pushes tag for the current $VERSION
 tag-release    - Create and push a new tag
-
 ```
 
 ## Create react app

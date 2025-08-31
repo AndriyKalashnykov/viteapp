@@ -1,1 +1,2 @@
-npm test
+pnpm test
+pnpm lint-staged

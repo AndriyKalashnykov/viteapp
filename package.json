@@ -14,14 +14,9 @@
     "lint": "eslint . --ext .ts,.js",
     "prepare": "husky"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "lint-staged": {
-        "*.{js,jsx,ts,tsx,json,css,scss,md}": "prettier --write"
-      },
+    "*.{js,jsx,ts,tsx,json,css,scss,md}": "prettier --write"
+  },
   "dependencies": {
     "env-var": "^7.5.0",
     "react": "^19.1.1",

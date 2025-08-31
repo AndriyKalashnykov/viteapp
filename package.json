@@ -15,7 +15,7 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,json,css,scss,md}": "prettier --write"
+    "*.{js,jsx,ts,tsx,json,css,scss,md}": "prettier --ignore-path .gitignore --write 'src/**/*.{ts,tsx,js,jsx}'"
   },
   "dependencies": {
     "env-var": "^7.5.0",

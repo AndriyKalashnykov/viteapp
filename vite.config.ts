@@ -22,7 +22,7 @@ export default defineConfig({
     commonjsOptions: {
       transformMixedEsModules: true,
     },
-        rollupOptions: {
+    rollupOptions: {
       output: {
         manualChunks: {
           // vendor split examples

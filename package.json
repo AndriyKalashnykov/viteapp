@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "prettier": "prettier --ignore-path .gitignore --write 'src/**/*.{ts,tsx,js,jsx}'",
     "prettier:diff": "prettier -l 'src/**/*.{ts,tsx,js,jsx}'",
-    "test": "echo \"No tests specified\" && exit 0"
+    "test": "echo \"No tests specified\" && exit 0",
+    "lint": "eslint . --ext .ts,.js",
+    "prepare": "husky"
   },
   "dependencies": {
     "env-var": "^7.5.0",
@@ -23,6 +25,7 @@
     "@types/react": "19.1.12",
     "@types/react-dom": "19.1.9",
     "@vitejs/plugin-react": "5.0.2",
+    "husky": "^9.1.7",
     "prettier": "3.6.2",
     "pretty-quick": "4.2.2",
     "terser": "5.43.1",

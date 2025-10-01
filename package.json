@@ -27,7 +27,7 @@
     "react-router-dom": "^7.8.2"
   },
   "devDependencies": {
-    "@types/node": "22.18.7",
+    "@types/node": "22.18.8",
     "@types/react": "19.1.16",
     "@types/react-dom": "19.1.9",
     "@vitejs/plugin-react": "5.0.4",
@@ -37,7 +37,7 @@
     "pretty-quick": "4.2.2",
     "simple-git-hooks": "2.13.1",
     "terser": "5.44.0",
-    "typescript": "5.9.2",
+    "typescript": "5.9.3",
     "vite": "7.1.7",
     "web-vitals": "5.1.0"
   },

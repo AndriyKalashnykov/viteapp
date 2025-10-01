@@ -20,7 +20,6 @@
   "commitBody": "Signed-off-by: Renovate Bot <bot@renovateapp.com>",
   "platformAutomerge": true,
   "groupName": "all",
-  "requiredStatusChecks": ["CI"],
   "packageRules": [
     {
       "description": "Automerge non-major updates",

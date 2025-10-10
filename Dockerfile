@@ -1,5 +1,5 @@
 # https://hub.docker.com/_/node/tags
-FROM node:22.20.0-alpine@sha256:cb3143549582cc5f74f26f0992cdef4a422b22128cb517f94173a5f910fa4ee7 AS builder
+FROM node:22.20.0-alpine@sha256:dbcedd8aeab47fbc0f4dd4bffa55b7c3c729a707875968d467aaaea42d6225af AS builder
 RUN apk --no-cache add git
 RUN npm --global install pnpm && pnpm self-update
 WORKDIR /app
@@ -12,7 +12,7 @@ RUN pnpm build
 #RUN npm run build
 
 # https://hub.docker.com/r/nginxinc/nginx-unprivileged/tags
-FROM nginxinc/nginx-unprivileged:1.29.1@sha256:67d2d72f91ceb1b97718cf48127f9a4323c595b4b085822f9fe32e796032004c AS server
+FROM nginxinc/nginx-unprivileged:1.29.1@sha256:593a17dc61d117d1bfb208246903265abe0047c5bd4508b6e790895924b24c31 AS server
 COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder ./app/dist /usr/share/nginx/html
 EXPOSE 8080

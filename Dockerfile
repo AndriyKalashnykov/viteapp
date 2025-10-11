@@ -12,7 +12,7 @@ RUN pnpm build
 #RUN npm run build
 
 # https://hub.docker.com/r/nginxinc/nginx-unprivileged/tags
-FROM nginxinc/nginx-unprivileged:1.29.1@sha256:593a17dc61d117d1bfb208246903265abe0047c5bd4508b6e790895924b24c31 AS server
+FROM nginxinc/nginx-unprivileged:1.29.2@sha256:1ed9133d03818da88225fc6930fa3a938328def27cb8cec7821ee72152b5feca AS server
 COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder ./app/dist /usr/share/nginx/html
 EXPOSE 8080

@@ -27,7 +27,7 @@
     "react-router-dom": "^7.9.3"
   },
   "devDependencies": {
-    "@types/node": "22.18.9",
+    "@types/node": "22.18.10",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.1",
     "@vitejs/plugin-react": "5.0.4",

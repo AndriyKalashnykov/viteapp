@@ -1,5 +1,5 @@
 # https://hub.docker.com/_/node/tags
-FROM node:22.21.1-alpine@sha256:0340fa682d72068edf603c305bfbc10e23219fb0e40df58d9ea4d6f33a9798bf AS builder
+FROM node:22.22.0-alpine@sha256:a9cd9bac76cf2396abf14ff0d1c3671a8175fe577ce350e62ab0fc1678050176 AS builder
 RUN apk --no-cache add git
 RUN npm --global install pnpm && pnpm self-update
 WORKDIR /app

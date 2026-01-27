@@ -15,7 +15,7 @@ ReactJS + Vite
 - [pnpm](https://pnpm.io/installation)
   ```bash
   npm install -g pnpm
-  pnpm add -g pnpm
+  pnpm self-update
   ```
 
 ## Help

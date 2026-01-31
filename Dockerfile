@@ -3,8 +3,7 @@ FROM node:24.13.0-alpine@sha256:cd6fb7efa6490f039f3471a189214d5f548c11df1ff9e5b1
 RUN apk --no-cache add git
 RUN npm --global install pnpm && pnpm self-update
 WORKDIR /app
-COPY package.json ./
-COPY .npmrc ./
+COPY package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install
 # RUN npm install --legacy-peer-deps
 COPY . .

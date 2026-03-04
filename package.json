@@ -32,7 +32,7 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.4",
     "husky": "9.1.7",
-    "lint-staged": "16.2.7",
+    "lint-staged": "16.3.1",
     "prettier": "3.8.1",
     "pretty-quick": "4.2.2",
     "simple-git-hooks": "2.13.1",

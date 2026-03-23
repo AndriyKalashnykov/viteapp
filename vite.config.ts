@@ -24,19 +24,12 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        manualChunks: {
-          // vendor split examples
-          react: ["react", "react-dom"],
-          router: ["react-router-dom"],
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("react-router")) return "router";
+            if (id.includes("react")) return "react";
+          }
         },
-        // or dynamic grouping:
-        // manualChunks(id) {
-        //   if (id.includes("node_modules")) {
-        //     if (id.includes("react")) return "react";
-        //     if (id.includes("react-router")) return "router";
-        //     return "vendor";
-        //   }
-        // }
       },
     },
   },

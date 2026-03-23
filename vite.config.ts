@@ -10,6 +10,9 @@ export default defineConfig({
       "@": resolve(__dirname, "src"),
     },
   },
+  css: {
+    minify: "esbuild",
+  },
   build: {
     target: "ES2022",
     minify: "terser",

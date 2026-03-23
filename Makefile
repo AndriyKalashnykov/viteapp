@@ -67,7 +67,7 @@ run: install
 
 #image: @ Build Docker Image
 image: install build
-	docker buildx build --load -t viteapp:v0.0.1 .
+	docker buildx build --load -t viteapp:v0.0.3 .
 
 #check-version: @ Ensure VERSION variable is set
 check-version:

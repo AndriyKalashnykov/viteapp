@@ -36,6 +36,7 @@ deps           - Install dependencies if not present (node, pnpm, docker, git)
 clean          - Cleanup
 setup          - Setup environment and tools
 install        - Install
+lint           - Lint
 build          - Build
 update         - Update
 upgrade        - Upgrade

@@ -32,7 +32,7 @@ This checks for and installs (if missing):
 | `make build`                  | Type-check with `tsc` and build for production via Vite            |
 | `make run`                    | Start Vite dev server with HMR at `http://localhost:5173`          |
 | `make clean`                  | Remove `node_modules/` and `dist/`                                 |
-| `make image`                  | Build Docker image (`viteapp:v0.0.3`) with nginx                   |
+| `make image VERSION=vX.Y.Z`   | Build Docker image (`viteapp:VERSION`) with nginx                  |
 | `make update`                 | Update dependencies to latest compatible versions                  |
 | `make upgrade`                | Upgrade dependencies including major version bumps                 |
 | `make setup`                  | Initialize environment and git hooks (husky)                       |

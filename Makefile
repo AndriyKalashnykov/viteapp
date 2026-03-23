@@ -66,8 +66,8 @@ run: install
 	pnpm dev
 
 #image: @ Build Docker Image
-image: install build
-	docker buildx build --load -t viteapp:v0.0.3 .
+image: check-version install build
+	docker buildx build --load -t viteapp:$(VERSION) .
 
 #check-version: @ Ensure VERSION variable is set
 check-version:

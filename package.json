@@ -11,7 +11,7 @@
     "prettier": "prettier --ignore-path .gitignore --write 'src/**/*.{ts,tsx,js,jsx}'",
     "prettier:diff": "prettier -l 'src/**/*.{ts,tsx,js,jsx}'",
     "test": "echo \"No tests specified\" && exit 0",
-    "lint": "eslint . --ext .ts,.js",
+    "lint": "eslint .",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -27,10 +27,15 @@
     "react-router-dom": "^7.13.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "24.12.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.2.0",
+    "eslint": "^10.1.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
     "husky": "9.1.7",
     "lint-staged": "16.4.0",
     "prettier": "3.8.1",
@@ -38,6 +43,7 @@
     "simple-git-hooks": "2.13.1",
     "terser": "5.46.1",
     "typescript": "5.9.3",
+    "typescript-eslint": "^8.57.2",
     "vite": "7.3.1",
     "web-vitals": "5.1.0"
   },

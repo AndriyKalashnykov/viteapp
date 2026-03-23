@@ -1,5 +1,4 @@
 import {
-  MouseEvent,
   useCallback,
   useContext,
   useEffect,
@@ -38,7 +37,7 @@ export const HooksDemoComponent = () => {
 
   useCustomHook();
 
-  function onButtonClick(event: MouseEvent<HTMLButtonElement>) {
+  function onButtonClick() {
     setCounter((counter) => counter + 1);
   }
 

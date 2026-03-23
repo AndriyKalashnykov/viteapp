@@ -45,6 +45,10 @@ setup: deps
 install: deps
 	pnpm install
 
+#lint: @ Lint
+lint: install
+	pnpm lint
+
 #build: @ Build
 build: install
 	pnpm build

@@ -5,7 +5,7 @@
 
 # viteapp
 
-ReactJS + Vite
+React 19 SPA built with [Vite 8](https://vite.dev), TypeScript (strict mode), and React Router v7.
 
 ## Requirements
 
@@ -22,47 +22,43 @@ This checks for and installs (if missing):
 - [Docker](https://docs.docker.com/get-docker/) (warns if missing, needed for `make image`)
 - [Git](https://git-scm.com/downloads) (warns if missing, needed for `make release`)
 
-## Help
+## Available Commands
+
+| Command                       | Description                                                        |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `make deps`                   | Check and install system dependencies (Node.js, pnpm, Docker, Git) |
+| `make install`                | Install project dependencies via pnpm                              |
+| `make lint`                   | Run ESLint on TypeScript source files                              |
+| `make build`                  | Type-check with `tsc` and build for production via Vite            |
+| `make run`                    | Start Vite dev server with HMR at `http://localhost:5173`          |
+| `make clean`                  | Remove `node_modules/` and `dist/`                                 |
+| `make image`                  | Build Docker image (`viteapp:v0.0.1`) with nginx                   |
+| `make update`                 | Update dependencies to latest compatible versions                  |
+| `make upgrade`                | Upgrade dependencies including major version bumps                 |
+| `make setup`                  | Initialize environment and git hooks (husky)                       |
+| `make release VERSION=vX.Y.Z` | Tag and push a release                                             |
+| `make renovate`               | Run Renovate locally in dry-run mode (requires `GITHUB_TOKEN`)     |
+
+Or use pnpm scripts directly:
 
 ```bash
-$ make help
-```
-
-```text
-Usage: make COMMAND
-Commands :
-help           - List available tasks
-deps           - Install dependencies if not present (node, pnpm, docker, git)
-clean          - Cleanup
-setup          - Setup environment and tools
-install        - Install
-lint           - Lint
-build          - Build
-update         - Update
-upgrade        - Upgrade
-run            - Run
-image          - Build Docker Image
-check-version  - Ensure VERSION variable is set
-release        - Creates and pushes tag for the current $VERSION
-tag-release    - Create and push a new tag
-renovate       - Run Renovate locally in dry-run mode
+pnpm dev              # Vite dev server
+pnpm build            # tsc + vite build
+pnpm lint             # ESLint
+pnpm prettier         # Format src/**/*.{ts,tsx,js,jsx}
+pnpm prettier:diff    # Check formatting without writing
 ```
 
 ## Release
 
-Set version as env variable
-
 ```bash
-export VERSION=v0.0.1
-```
-
-run a release task
-
-```bash
+export VERSION=v0.0.2
 make release
 ```
 
+This creates and pushes a git tag. The CI pipeline builds and publishes the Docker image to `ghcr.io` on tagged releases.
+
 ## References
 
-- https://fullstackcode.dev/2022/01/30/creating-react-js-app-using-vite-2-0/
-- https://blog.logrocket.com/vite-3-vs-create-react-app-comparison-migration-guide/
+- [Creating a React app using Vite](https://fullstackcode.dev/2022/01/30/creating-react-js-app-using-vite-2-0/)
+- [Vite 3 vs Create React App: comparison and migration guide](https://blog.logrocket.com/vite-3-vs-create-react-app-comparison-migration-guide/)

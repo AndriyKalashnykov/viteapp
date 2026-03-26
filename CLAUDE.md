@@ -9,12 +9,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 make deps              # Install system dependencies (node, pnpm, docker, git) if missing
 make install           # pnpm install (runs deps first)
-make lint              # ESLint (runs install first)
+make lint              # ESLint
 make build             # TypeScript check + Vite production build (runs install first)
+make test              # Run tests (no-op until test suite added)
 make run               # Start Vite dev server with HMR
+make ci                # Full local CI pipeline (install, lint, build, test)
 make clean             # Remove node_modules/ and dist/
-make image             # Build Docker image (nginx-unprivileged)
-make release VERSION=vX.Y.Z  # Tag and push a release
+make image-build       # Build Docker image (nginx-unprivileged)
+make image-run         # Run Docker container on port 8080
+make image-stop        # Stop Docker container
+make release           # Interactive tag creation with semver validation
 ```
 
 Direct pnpm scripts:
@@ -66,8 +70,9 @@ Nginx (`nginx/nginx.conf`):
 GitHub Actions (`.github/workflows/ci.yml`):
 
 - Triggers: push to `main`, tags `v*`, pull requests
-- Steps: checkout → corepack → setup-node (with pnpm cache) → install → lint (`make lint`) → build (`make build`) → Docker build (push on tags only)
-- Docker images pushed to `ghcr.io` on version tags
+- Steps: checkout → corepack → setup-node (with pnpm cache) → install → lint (`make lint`) → build (`make build`) → QEMU + Buildx → Docker build (push on tags only)
+- Docker images pushed to `ghcr.io` on version tags (multi-arch: `amd64` + `arm64`)
+- Docker build cache: GitHub Actions cache (`type=gha`)
 
 ## Code Quality
 

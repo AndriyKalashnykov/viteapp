@@ -57,7 +57,7 @@ install: deps
 	@pnpm install
 
 #lint: @ Run ESLint on TypeScript source files
-lint:
+lint: deps
 	@pnpm lint
 
 #build: @ Type-check with tsc and build for production via Vite
@@ -65,15 +65,15 @@ build: install
 	@pnpm build
 
 #test: @ Run tests
-test:
+test: deps
 	@pnpm test
 
 #update: @ Update dependencies to latest compatible versions
-update:
+update: deps
 	@pnpm update
 
 #upgrade: @ Upgrade dependencies including major version bumps
-upgrade:
+upgrade: deps
 	@pnpm upgrade
 
 #run: @ Start Vite dev server with HMR
@@ -108,11 +108,11 @@ release:
 		echo "Done."'
 
 #run-ci: @ Run GitHub Actions workflow locally using act
-run-ci:
+run-ci: deps
 	@act push --container-architecture linux/amd64
 
 #renovate: @ Run Renovate locally in dry-run mode (requires GITHUB_TOKEN)
-renovate:
+renovate: deps
 	@LOG_LEVEL=debug npx renovate --dry-run=full --platform=local --repository-cache=reset --token=$(GITHUB_TOKEN)
 
 .PHONY: help deps clean setup install lint build test update upgrade run ci \

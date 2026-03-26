@@ -89,15 +89,15 @@ image-build: build
 	@docker buildx build --load -t $(APP_NAME):$(CURRENTTAG) .
 
 #image-run: @ Run Docker container on port 8080
-image-run: image-stop
+image-run: deps image-stop
 	@docker run --rm -p 8080:8080 --name $(APP_NAME) $(APP_NAME):$(CURRENTTAG)
 
 #image-stop: @ Stop Docker container
-image-stop:
+image-stop: deps
 	@docker stop $(APP_NAME) 2>/dev/null || true
 
 #release: @ Create and push a new tag (VERSION=vX.Y.Z)
-release:
+release: deps
 	@bash -c 'read -p "New tag (current: $(CURRENTTAG)): " newtag && \
 		echo "$$newtag" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "Error: Tag must match vN.N.N"; exit 1; } && \
 		echo -n "Create and push $$newtag? [y/N] " && read ans && [ "$${ans:-N}" = y ] && \

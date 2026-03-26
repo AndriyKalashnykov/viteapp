@@ -6,6 +6,7 @@ CURRENTTAG := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 # === Tool Versions (pinned) ===
 NVM_VERSION  := 0.40.3
 PNPM_VERSION := 10.32.1
+ACT_VERSION  := 0.2.86
 
 #help: @ List available tasks
 help:
@@ -35,6 +36,9 @@ deps:
 		else \
 			npm install -g pnpm@$(PNPM_VERSION); \
 		fi; \
+	}
+	@command -v act >/dev/null 2>&1 || { echo "Installing act $(ACT_VERSION)..."; \
+		curl -sSfL https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash -s -- -b /usr/local/bin v$(ACT_VERSION); \
 	}
 	@command -v docker >/dev/null 2>&1 || echo "WARNING: docker is not installed (needed for 'make image-build'). Install from https://docs.docker.com/get-docker/"
 	@command -v git >/dev/null 2>&1 || echo "WARNING: git is not installed (needed for 'make release'). Install from https://git-scm.com/downloads"
@@ -103,9 +107,13 @@ release:
 		git push && \
 		echo "Done."'
 
+#run-ci: @ Run GitHub Actions workflow locally using act
+run-ci:
+	@act push --container-architecture linux/amd64
+
 #renovate: @ Run Renovate locally in dry-run mode (requires GITHUB_TOKEN)
 renovate:
 	@LOG_LEVEL=debug npx renovate --dry-run=full --platform=local --repository-cache=reset --token=$(GITHUB_TOKEN)
 
 .PHONY: help deps clean setup install lint build test update upgrade run ci \
-	image-build image-run image-stop release renovate
+	image-build image-run image-stop release run-ci renovate

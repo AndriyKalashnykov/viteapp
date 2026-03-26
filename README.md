@@ -24,24 +24,25 @@ This checks for and installs (if missing):
 
 ## Available Commands
 
-| Command            | Description                                                        |
-| ------------------ | ------------------------------------------------------------------ |
-| `make deps`        | Check and install system dependencies (Node.js, pnpm, Docker, Git) |
-| `make install`     | Install project dependencies via pnpm                              |
-| `make lint`        | Run ESLint on TypeScript source files                              |
-| `make build`       | Type-check with `tsc` and build for production via Vite            |
-| `make test`        | Run tests (no-op until test suite is added)                        |
-| `make run`         | Start Vite dev server with HMR at `http://localhost:5173`          |
-| `make ci`          | Run full local CI pipeline (install, lint, build, test)            |
-| `make clean`       | Remove `node_modules/` and `dist/`                                 |
-| `make image-build` | Build Docker image (`viteapp:tag`) with nginx                      |
-| `make image-run`   | Run Docker container on port 8080                                  |
-| `make image-stop`  | Stop Docker container                                              |
-| `make update`      | Update dependencies to latest compatible versions                  |
-| `make upgrade`     | Upgrade dependencies including major version bumps                 |
-| `make setup`       | Initialize environment and git hooks (husky)                       |
-| `make release`     | Interactive tag creation with semver validation                    |
-| `make renovate`    | Run Renovate locally in dry-run mode (requires `GITHUB_TOKEN`)     |
+| Command            | Description                                                                    |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `make deps`        | Check and install system dependencies (Node.js, pnpm, Docker, Git)             |
+| `make install`     | Install project dependencies via pnpm                                          |
+| `make lint`        | Run ESLint on TypeScript source files                                          |
+| `make build`       | Type-check with `tsc` and build for production via Vite                        |
+| `make test`        | Run tests (no-op until test suite is added)                                    |
+| `make run`         | Start Vite dev server with HMR at `http://localhost:5173`                      |
+| `make ci`          | Run full local CI pipeline (install, lint, build, test)                        |
+| `make run-ci`      | Run GitHub Actions workflow locally using [act](https://github.com/nektos/act) |
+| `make clean`       | Remove `node_modules/` and `dist/`                                             |
+| `make image-build` | Build Docker image (`viteapp:tag`) with nginx                                  |
+| `make image-run`   | Run Docker container on port 8080                                              |
+| `make image-stop`  | Stop Docker container                                                          |
+| `make update`      | Update dependencies to latest compatible versions                              |
+| `make upgrade`     | Upgrade dependencies including major version bumps                             |
+| `make setup`       | Initialize environment and git hooks (husky)                                   |
+| `make release`     | Interactive tag creation with semver validation                                |
+| `make renovate`    | Run Renovate locally in dry-run mode (requires `GITHUB_TOKEN`)                 |
 
 Or use pnpm scripts directly:
 

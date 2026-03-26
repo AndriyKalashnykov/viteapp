@@ -14,6 +14,7 @@ make build             # TypeScript check + Vite production build (runs install 
 make test              # Run tests (no-op until test suite added)
 make run               # Start Vite dev server with HMR
 make ci                # Full local CI pipeline (install, lint, build, test)
+make run-ci            # Run GitHub Actions workflow locally using act
 make clean             # Remove node_modules/ and dist/
 make image-build       # Build Docker image (nginx-unprivileged)
 make image-run         # Run Docker container on port 8080

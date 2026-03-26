@@ -41,6 +41,16 @@ jobs:
       - name: Build
         run: make build
 
+  docker:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: ci
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
 
@@ -54,7 +64,6 @@ jobs:
           OWNER: "${{ github.repository_owner }}"
 
       - name: Login to image repository
-        if: github.ref_type == 'tag'
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
@@ -68,8 +77,6 @@ jobs:
           images: ghcr.io/${{ env.OWNER_LC }}/viteapp
           flavor: latest=true
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern=v{{version}}
             type=semver,pattern=v{{major}}.{{minor}}
             type=semver,pattern=v{{major}}
@@ -80,7 +87,7 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.ref_type == 'tag' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

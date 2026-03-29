@@ -1,0 +1,4 @@
+# hadolint configuration
+# https://github.com/hadolint/hadolint#configure
+ignored:
+  - DL3018  # Pin versions in apk add (Alpine packages change frequently, acceptable risk)

@@ -4,13 +4,13 @@ APP_NAME   := viteapp
 CURRENTTAG := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 
 # === Tool Versions (pinned) ===
-NVM_VERSION  := 0.40.3
-PNPM_VERSION := 10.32.1
-ACT_VERSION  := 0.2.86
+NVM_VERSION      := 0.40.3
+PNPM_VERSION     := 10.32.1
+ACT_VERSION      := 0.2.86
+HADOLINT_VERSION := 2.12.0
 
 #help: @ List available tasks
 help:
-	@clear
 	@echo "Usage: make COMMAND"
 	@echo "Commands :"
 	@grep -E '[a-zA-Z\.\-]+:.*?@ .*$$' $(MAKEFILE_LIST)| tr -d '#' | awk 'BEGIN {FS = ":.*?@ "}; {printf "\033[32m%-16s\033[0m - %s\n", $$1, $$2}'
@@ -37,12 +37,23 @@ deps:
 			npm install -g pnpm@$(PNPM_VERSION); \
 		fi; \
 	}
-	@command -v act >/dev/null 2>&1 || { echo "Installing act $(ACT_VERSION)..."; \
-		curl -sSfL https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash -s -- -b /usr/local/bin v$(ACT_VERSION); \
-	}
 	@command -v docker >/dev/null 2>&1 || echo "WARNING: docker is not installed (needed for 'make image-build'). Install from https://docs.docker.com/get-docker/"
 	@command -v git >/dev/null 2>&1 || echo "WARNING: git is not installed (needed for 'make release'). Install from https://git-scm.com/downloads"
 	@echo "All dependencies checked."
+
+#deps-act: @ Install act for local CI runs
+deps-act: deps
+	@command -v act >/dev/null 2>&1 || { echo "Installing act $(ACT_VERSION)..."; \
+		curl -sSfL https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash -s -- -b /usr/local/bin v$(ACT_VERSION); \
+	}
+
+#deps-hadolint: @ Install hadolint for Dockerfile linting
+deps-hadolint:
+	@command -v hadolint >/dev/null 2>&1 || { echo "Installing hadolint $(HADOLINT_VERSION)..."; \
+		curl -sSfL -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/download/v$(HADOLINT_VERSION)/hadolint-Linux-x86_64 && \
+		install -m 755 /tmp/hadolint /usr/local/bin/hadolint && \
+		rm -f /tmp/hadolint; \
+	}
 
 #clean: @ Remove node_modules/ and dist/
 clean:
@@ -56,9 +67,10 @@ setup: deps
 install: deps
 	@pnpm install
 
-#lint: @ Run ESLint on TypeScript source files
-lint: deps
+#lint: @ Run ESLint and hadolint on source files
+lint: deps deps-hadolint
 	@pnpm lint
+	@hadolint Dockerfile
 
 #build: @ Type-check with tsc and build for production via Vite
 build: install
@@ -80,8 +92,8 @@ upgrade: deps
 run: install
 	@pnpm dev
 
-#ci: @ Run full local CI pipeline (install, lint, build, test)
-ci: install lint build test
+#ci: @ Run full local CI pipeline (install, lint, test, build)
+ci: install lint test build
 	@echo "CI pipeline passed."
 
 #image-build: @ Build Docker image
@@ -107,8 +119,8 @@ release: deps
 		git push && \
 		echo "Done."'
 
-#run-ci: @ Run GitHub Actions workflow locally using act
-run-ci: deps
+#ci-run: @ Run GitHub Actions workflow locally using act
+ci-run: deps-act
 	@act push --container-architecture linux/amd64
 
 #renovate: @ Run Renovate locally in dry-run mode (requires GITHUB_TOKEN)
@@ -119,5 +131,6 @@ renovate: deps
 renovate-validate:
 	@npx --yes renovate --platform=local
 
-.PHONY: help deps clean setup install lint build test update upgrade run ci \
-	image-build image-run image-stop release run-ci renovate renovate-validate
+.PHONY: help deps deps-act deps-hadolint clean setup install lint build test \
+	update upgrade run ci image-build image-run image-stop release ci-run \
+	renovate renovate-validate

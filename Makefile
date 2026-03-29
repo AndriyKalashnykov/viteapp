@@ -115,5 +115,9 @@ run-ci: deps
 renovate: deps
 	@LOG_LEVEL=debug npx renovate --dry-run=full --platform=local --repository-cache=reset --token=$(GITHUB_TOKEN)
 
+#renovate-validate: @ Validate Renovate configuration
+renovate-validate:
+	@npx --yes renovate --platform=local
+
 .PHONY: help deps clean setup install lint build test update upgrade run ci \
-	image-build image-run image-stop release run-ci renovate
+	image-build image-run image-stop release run-ci renovate renovate-validate

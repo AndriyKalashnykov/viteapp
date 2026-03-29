@@ -1,26 +1,57 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:best-practices",
-    ":label(dependencies)",
-    ":semanticCommitType(chore)",
-    "docker:pinDigests",
-    "helpers:pinGitHubActionDigests",
-    ":dependencyDashboard",
-    "schedule:daily",
-    ":automergeRequireAllStatusChecks",
-    ":prConcurrentLimitNone",
-    "replacements:all",
-    "workarounds:all"
-  ],
+  "extends": ["config:best-practices", ":semanticCommitType(chore)"],
   "commitMessagePrefix": "chore(all): ",
   "commitMessageAction": "update",
   "commitBody": "Signed-off-by: Renovate Bot <bot@renovateapp.com>",
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 50,
+  "prHourlyLimit": 0,
+  "platformAutomerge": true,
   "automerge": true,
   "automergeType": "pr",
-  "platformAutomerge": true,
-  "prConcurrentLimit": 0,
-  "prHourlyLimit": 0,
-  "groupName": "all",
-  "labels": ["dependencies"]
+  "automergeStrategy": "squash",
+  "ignoreTests": false,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true
+  },
+  "npm": {
+    "minimumReleaseAge": "3 days"
+  },
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "automerge": true,
+    "minimumReleaseAge": "0 days"
+  },
+  "packageRules": [
+    {
+      "description": "Wait 3 days before automerging major updates",
+      "matchUpdateTypes": ["major"],
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Group GitHub Actions into one PR",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "description": "Group devDependencies non-major updates",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "dev-dependencies",
+      "automerge": true
+    },
+    {
+      "description": "Group type definitions",
+      "matchPackageNames": ["/^@types\\//"],
+      "groupName": "type-definitions",
+      "automerge": true
+    },
+    {
+      "description": "Group Docker base images",
+      "matchDatasources": ["docker"],
+      "groupName": "Docker dependencies"
+    }
+  ]
 }

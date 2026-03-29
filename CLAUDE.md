@@ -81,3 +81,16 @@ GitHub Actions (`.github/workflows/ci.yml`):
 - **Pre-commit:** lint-staged runs Prettier on staged files
 - **Renovate:** auto-merges all dependency updates after CI passes (daily schedule)
 - **Prettier:** uses defaults (empty `.prettierrc`)
+
+## Skills
+
+Use the following skills when working on related files:
+
+| File(s)                   | Skill          |
+| ------------------------- | -------------- |
+| `Makefile`                | `/makefile`    |
+| `renovate.json`           | `/renovate`    |
+| `README.md`               | `/readme`      |
+| `.github/workflows/*.yml` | `/ci-workflow` |
+
+When spawning subagents, always pass conventions from the respective skill into the agent's prompt.

@@ -5,7 +5,7 @@
 
 # Vite App
 
-React 19 SPA built with [Vite 8](https://vite.dev), TypeScript (strict mode), and React Router v7. Deployed as a multi-arch Docker image via nginx.
+React 19 SPA built with [Vite 8](https://vite.dev) and TypeScript (strict mode). Deployed as a multi-arch Docker image via nginx.
 
 ## Quick Start
 
@@ -49,16 +49,18 @@ Run `make help` to see all available targets.
 
 ### Code Quality
 
-| Target      | Description                             |
-| ----------- | --------------------------------------- |
-| `make lint` | Run ESLint and hadolint on source files |
-| `make test` | Run tests                               |
+| Target              | Description                             |
+| ------------------- | --------------------------------------- |
+| `make lint`         | Run ESLint and hadolint on source files |
+| `make test`         | Run tests                               |
+| `make format`       | Format source files with Prettier       |
+| `make format-check` | Check formatting without writing        |
 
 ### CI
 
 | Target        | Description                                                                  |
 | ------------- | ---------------------------------------------------------------------------- |
-| `make ci`     | Full CI pipeline: install, lint, test, build                                 |
+| `make ci`     | Full CI pipeline: install, format-check, lint, test, build                   |
 | `make ci-run` | Run GitHub Actions workflow locally via [act](https://github.com/nektos/act) |
 
 ### Docker
@@ -73,10 +75,13 @@ Run `make help` to see all available targets.
 
 | Target                   | Description                                                        |
 | ------------------------ | ------------------------------------------------------------------ |
+| `make help`              | List available tasks                                               |
 | `make deps`              | Check and install system dependencies (Node.js, pnpm, Docker, Git) |
+| `make deps-act`          | Install [act](https://github.com/nektos/act) for local CI runs    |
+| `make deps-hadolint`     | Install hadolint for Dockerfile linting                            |
 | `make setup`             | Setup environment and git hooks (husky)                            |
-| `make update`            | Update dependencies to latest compatible versions                  |
-| `make upgrade`           | Upgrade dependencies including major version bumps                 |
+| `make update`            | Update dependencies to latest compatible versions (`pnpm update`)  |
+| `make upgrade`           | Upgrade dependencies including major version bumps (`pnpm upgrade`)|
 | `make release`           | Interactive tag creation with semver validation                    |
 | `make renovate`          | Run Renovate locally in dry-run mode (requires `GITHUB_TOKEN`)     |
 | `make renovate-validate` | Validate Renovate configuration                                    |
@@ -95,10 +100,12 @@ pnpm prettier:diff    # Check formatting without writing
 
 GitHub Actions runs on every push to `main`, tags `v*`, and pull requests.
 
-| Job        | Triggers       | Steps                                 |
-| ---------- | -------------- | ------------------------------------- |
-| **ci**     | push, PR, tags | Install, Lint, Test, Build            |
-| **docker** | `v*` tags only | QEMU, Buildx, Login, Meta, Build+Push |
+| Job              | Triggers       | Steps                                 |
+| ---------------- | -------------- | ------------------------------------- |
+| **static-check** | push, PR, tags | Install, Format check, Lint           |
+| **build**        | push, PR, tags | Install, Build (after static-check)   |
+| **test**         | push, PR, tags | Install, Test (after static-check)    |
+| **docker**       | `v*` tags only | QEMU, Buildx, Login, Meta, Build+Push |
 
 Docker images are pushed to `ghcr.io` as multi-arch (`linux/amd64` + `linux/arm64`) with GHA build cache.
 

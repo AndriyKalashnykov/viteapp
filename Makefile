@@ -4,16 +4,16 @@ APP_NAME   := viteapp
 CURRENTTAG := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 
 # === Tool Versions (pinned) ===
-NVM_VERSION      := 0.40.3
-PNPM_VERSION     := 10.32.1
-ACT_VERSION      := 0.2.86
-HADOLINT_VERSION := 2.12.0
+NVM_VERSION      := 0.40.4
+PNPM_VERSION     := 10.33.0
+ACT_VERSION      := 0.2.87
+HADOLINT_VERSION := 2.14.0
 
 #help: @ List available tasks
 help:
 	@echo "Usage: make COMMAND"
 	@echo "Commands :"
-	@grep -E '[a-zA-Z\.\-]+:.*?@ .*$$' $(MAKEFILE_LIST)| tr -d '#' | awk 'BEGIN {FS = ":.*?@ "}; {printf "\033[32m%-16s\033[0m - %s\n", $$1, $$2}'
+	@grep -E '[a-zA-Z\.\-]+:.*?@ .*$$' $(MAKEFILE_LIST)| tr -d '#' | awk 'BEGIN {FS = ":.*?@ "}; {printf "\033[32m%-20s\033[0m - %s\n", $$1, $$2}'
 
 #deps: @ Install dependencies if not present (node, pnpm, docker, git)
 deps:
@@ -77,14 +77,14 @@ build: install
 	@pnpm build
 
 #test: @ Run tests
-test: deps
+test: install
 	@pnpm test
 
-#update: @ Update dependencies to latest compatible versions
+#update: @ Update dependencies to latest compatible versions (pnpm update)
 update: deps
 	@pnpm update
 
-#upgrade: @ Upgrade dependencies including major version bumps
+#upgrade: @ Upgrade dependencies including major version bumps (pnpm upgrade)
 upgrade: deps
 	@pnpm upgrade
 
@@ -92,8 +92,16 @@ upgrade: deps
 run: install
 	@pnpm dev
 
-#ci: @ Run full local CI pipeline (install, lint, test, build)
-ci: install lint test build
+#format: @ Format source files with Prettier
+format: install
+	@pnpm prettier
+
+#format-check: @ Check formatting without writing
+format-check: install
+	@pnpm prettier:diff
+
+#ci: @ Run full local CI pipeline (install, format-check, lint, test, build)
+ci: install format-check lint test build
 	@echo "CI pipeline passed."
 
 #image-build: @ Build Docker image
@@ -132,5 +140,5 @@ renovate-validate:
 	@npx --yes renovate --platform=local
 
 .PHONY: help deps deps-act deps-hadolint clean setup install lint build test \
-	update upgrade run ci image-build image-run image-stop release ci-run \
-	renovate renovate-validate
+	update upgrade run format format-check ci image-build image-run image-stop \
+	release ci-run renovate renovate-validate

@@ -137,7 +137,7 @@ renovate: deps
 
 #renovate-validate: @ Validate Renovate configuration
 renovate-validate:
-	@npx --yes renovate --platform=local
+	@npx --yes renovate-config-validator
 
 .PHONY: help deps deps-act deps-hadolint clean setup install lint build test \
 	update upgrade run format format-check ci image-build image-run image-stop \

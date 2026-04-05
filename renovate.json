@@ -24,6 +24,43 @@
     "automerge": true,
     "minimumReleaseAge": "0 days"
   },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Track nvm version in Makefile",
+      "managerFilePatterns": ["/^Makefile$/"],
+      "matchStrings": ["NVM_VERSION\\s*:=\\s*(?<currentValue>.*?)\\n"],
+      "depNameTemplate": "nvm-sh/nvm",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Track pnpm version in Makefile",
+      "managerFilePatterns": ["/^Makefile$/"],
+      "matchStrings": ["PNPM_VERSION\\s*:=\\s*(?<currentValue>.*?)\\n"],
+      "depNameTemplate": "pnpm",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "Track act version in Makefile",
+      "managerFilePatterns": ["/^Makefile$/"],
+      "matchStrings": ["ACT_VERSION\\s*:=\\s*(?<currentValue>.*?)\\n"],
+      "depNameTemplate": "nektos/act",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Track hadolint version in Makefile",
+      "managerFilePatterns": ["/^Makefile$/"],
+      "matchStrings": ["HADOLINT_VERSION\\s*:=\\s*(?<currentValue>.*?)\\n"],
+      "depNameTemplate": "hadolint/hadolint",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    }
+  ],
   "packageRules": [
     {
       "description": "Wait 3 days before automerging major updates",
@@ -52,6 +89,11 @@
       "description": "Group Docker base images",
       "matchDatasources": ["docker"],
       "groupName": "Docker dependencies"
+    },
+    {
+      "description": "Group Makefile tool versions",
+      "matchManagers": ["custom.regex"],
+      "groupName": "Makefile tools"
     }
   ]
 }

@@ -15,3 +15,9 @@ pnpm-debug.log*
 .env.local
 .env.*.local
 coverage
+Makefile
+CLAUDE.md
+README.md
+LICENSE
+renovate.json
+*.md

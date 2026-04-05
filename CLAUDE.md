@@ -11,17 +11,26 @@ make deps              # Install system dependencies (node, pnpm, docker, git) i
 make install           # pnpm install (runs deps first)
 make lint              # ESLint + hadolint (Dockerfile linting)
 make build             # TypeScript check + Vite production build (runs install first)
-make test              # Run tests (no-op until test suite added)
+make test              # Run Vitest tests
 make run               # Start Vite dev server with HMR
 make format            # Format source files with Prettier
 make format-check      # Check formatting without writing
+make vulncheck         # Check for known vulnerabilities in dependencies
 make ci                # Full local CI pipeline (install, format-check, lint, test, build)
 make ci-run            # Run GitHub Actions workflow locally using act
 make clean             # Remove node_modules/ and dist/
+make setup             # Setup environment and git hooks (husky)
 make image-build       # Build Docker image (nginx-unprivileged)
 make image-run         # Run Docker container on port 8080
 make image-stop        # Stop Docker container
-make release           # Interactive tag creation with semver validation
+make release           # Create and push a new tag (VERSION=vX.Y.Z)
+make deps-act          # Install act for local CI runs
+make deps-hadolint     # Install hadolint for Dockerfile linting
+make deps-update       # Update dependencies to latest compatible versions (pnpm update)
+make deps-upgrade      # Upgrade dependencies including major version bumps (pnpm upgrade)
+make deps-prune        # Check for unused dependencies
+make deps-prune-check  # Verify no prunable dependencies (CI gate)
+make renovate          # Run Renovate locally in dry-run mode (requires GITHUB_TOKEN)
 make renovate-validate # Validate Renovate configuration
 ```
 
@@ -30,21 +39,21 @@ Direct pnpm scripts:
 ```bash
 pnpm dev               # Vite dev server
 pnpm build             # tsc && vite build
-pnpm lint              # ESLint (.ts, .js)
+pnpm lint              # ESLint (*.ts, *.tsx)
 pnpm prettier          # Format src/**/*.{ts,tsx,js,jsx}
 pnpm prettier:diff     # Check formatting without writing
 ```
 
-No test suite yet (`pnpm test` is a no-op).
+Test runner: `pnpm test` runs Vitest (`vitest run`). Test setup in `src/test/setup.ts` (jest-dom matchers).
 
 ## Architecture
 
 React 19 SPA built with Vite 8 and TypeScript (strict mode).
 
-- **Entry:** `index.html` -> `src/main.tsx` (ThemeContext provider) -> `src/App.tsx`
-- **State:** React Context API (ThemeContext for light/dark theme), standard hooks
+- **Entry:** `index.html` -> `src/main.tsx` (defines ThemeContext inline, wraps App) -> `src/App.tsx`
+- **State:** React Context API (ThemeContext for light/dark theme, defined in `src/main.tsx`), standard hooks
 - **Path alias:** `@` -> `src/` (configured in `vite.config.ts` and `tsconfig.json`)
-- **Performance:** Web Vitals via `src/reportWebVitals.ts` (logs to console in dev; stripped in production by terser `drop_console`)
+- **Performance:** Web Vitals via `src/reportWebVitals.ts` (called with `console.log` in `src/main.tsx`; all `console.*` calls stripped in production by terser `drop_console`)
 
 ## Build & Bundle Config
 
@@ -73,20 +82,32 @@ Nginx (`nginx/nginx.conf`):
 GitHub Actions (`.github/workflows/ci.yml`):
 
 - Triggers: push to `main`, tags `v*`, pull requests, `workflow_call` (reusable)
-- `static-check` job: checkout -> corepack -> setup-node (with pnpm cache) -> install -> format-check -> lint
+- `static-check` job: checkout -> pnpm/action-setup -> setup-node (with pnpm cache) -> install -> format-check -> lint
 - `build` job: install -> build (runs after `static-check`)
 - `test` job: install -> test (runs after `static-check`, parallel with `build`)
 - `docker` job: QEMU -> Buildx -> login -> meta -> build+push (runs only on `v*` tags, after `build` + `test` pass)
 - Docker images pushed to `ghcr.io` as multi-arch (`amd64` + `arm64`) with GHA build cache
 - Permissions: `contents: read` at workflow level; `packages: write` only on docker job
 
+Cleanup (`.github/workflows/cleanup-runs.yml`):
+
+- Weekly cron: deletes workflow runs older than 7 days (keeps minimum 5)
+- Uses native `gh` CLI (no third-party actions)
+
 ## Code Quality
 
-- **ESLint:** flat config (`eslint.config.js`) with `typescript-eslint`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`
+- **ESLint:** flat config (`eslint.config.js`) with `typescript-eslint`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`; `--max-warnings 0` enforced
 - **hadolint:** Dockerfile linting via `make lint` (auto-installed by `deps-hadolint` target)
 - **Pre-commit:** lint-staged runs Prettier on staged files
 - **Renovate:** auto-merges all dependency updates after CI passes (no restrictive schedule, ASAP merging)
 - **Prettier:** uses defaults (no config file)
+- **Vitest:** unit tests with `@testing-library/react` and `jest-dom` matchers; config in `vite.config.ts`; setup in `src/test/setup.ts`
+
+## Upgrade Backlog
+
+Last reviewed: 2026-04-05
+
+- [ ] Evaluate husky alternatives (`simple-git-hooks`, `lefthook`) if husky remains without releases past 2026 Q3
 
 ## Skills
 

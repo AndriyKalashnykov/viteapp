@@ -19,14 +19,13 @@ make run       # start Vite dev server with HMR
 
 ## Prerequisites
 
-| Tool                                           | Version | Purpose                               |
-| ---------------------------------------------- | ------- | ------------------------------------- |
-| [GNU Make](https://www.gnu.org/software/make/) | 3.81+   | Build orchestration                   |
-| [Node.js](https://nodejs.org/)                 | 24+     | JavaScript runtime                    |
-| [nvm](https://github.com/nvm-sh/nvm)           | latest  | Node.js version management (optional) |
-| [pnpm](https://pnpm.io/)                       | 10+     | Package manager                       |
-| [Docker](https://www.docker.com/)              | latest  | Container builds (optional)           |
-| [Git](https://git-scm.com/)                    | latest  | Version control                       |
+| Tool                                           | Version | Purpose                     |
+| ---------------------------------------------- | ------- | --------------------------- |
+| [GNU Make](https://www.gnu.org/software/make/) | 3.81+   | Build orchestration         |
+| [Node.js](https://nodejs.org/)                 | 24+     | JavaScript runtime          |
+| [pnpm](https://pnpm.io/)                       | 10.33+  | Package manager             |
+| [Docker](https://www.docker.com/)              | latest  | Container builds (optional) |
+| [Git](https://git-scm.com/)                    | latest  | Version control             |
 
 Install all required dependencies:
 
@@ -49,12 +48,13 @@ Run `make help` to see all available targets.
 
 ### Code Quality
 
-| Target              | Description                             |
-| ------------------- | --------------------------------------- |
-| `make lint`         | Run ESLint and hadolint on source files |
-| `make test`         | Run tests                               |
-| `make format`       | Format source files with Prettier       |
-| `make format-check` | Check formatting without writing        |
+| Target              | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| `make lint`         | Run ESLint and hadolint on source files         |
+| `make test`         | Run Vitest tests                                |
+| `make vulncheck`    | Check for known vulnerabilities in dependencies |
+| `make format`       | Format source files with Prettier               |
+| `make format-check` | Check formatting without writing                |
 
 ### CI
 
@@ -73,24 +73,27 @@ Run `make help` to see all available targets.
 
 ### Utilities
 
-| Target                   | Description                                                        |
-| ------------------------ | ------------------------------------------------------------------ |
-| `make help`              | List available tasks                                               |
-| `make deps`              | Check and install system dependencies (Node.js, pnpm, Docker, Git) |
-| `make deps-act`          | Install [act](https://github.com/nektos/act) for local CI runs    |
-| `make deps-hadolint`     | Install hadolint for Dockerfile linting                            |
-| `make setup`             | Setup environment and git hooks (husky)                            |
-| `make update`            | Update dependencies to latest compatible versions (`pnpm update`)  |
-| `make upgrade`           | Upgrade dependencies including major version bumps (`pnpm upgrade`)|
-| `make release`           | Interactive tag creation with semver validation                    |
-| `make renovate`          | Run Renovate locally in dry-run mode (requires `GITHUB_TOKEN`)     |
-| `make renovate-validate` | Validate Renovate configuration                                    |
+| Target                   | Description                                                         |
+| ------------------------ | ------------------------------------------------------------------- |
+| `make help`              | List available tasks                                                |
+| `make deps`              | Install dependencies if not present (node, pnpm, docker, git)       |
+| `make deps-act`          | Install [act](https://github.com/nektos/act) for local CI runs      |
+| `make deps-hadolint`     | Install hadolint for Dockerfile linting                             |
+| `make deps-update`       | Update dependencies to latest compatible versions (`pnpm update`)   |
+| `make deps-upgrade`      | Upgrade dependencies including major version bumps (`pnpm upgrade`) |
+| `make deps-prune`        | Check for unused dependencies                                       |
+| `make deps-prune-check`  | Verify no prunable dependencies (CI gate)                           |
+| `make setup`             | Setup environment and git hooks (husky)                             |
+| `make release`           | Create and push a new tag (VERSION=vX.Y.Z)                          |
+| `make renovate`          | Run Renovate locally in dry-run mode (requires `GITHUB_TOKEN`)      |
+| `make renovate-validate` | Validate Renovate configuration                                     |
 
 Or use pnpm scripts directly:
 
 ```bash
 pnpm dev              # Vite dev server
 pnpm build            # tsc + vite build
+pnpm test             # Vitest
 pnpm lint             # ESLint
 pnpm prettier         # Format src/**/*.{ts,tsx,js,jsx}
 pnpm prettier:diff    # Check formatting without writing
@@ -98,7 +101,7 @@ pnpm prettier:diff    # Check formatting without writing
 
 ## CI/CD
 
-GitHub Actions runs on every push to `main`, tags `v*`, and pull requests.
+GitHub Actions runs on every push to `main`, tags `v*`, pull requests, and `workflow_call` (reusable).
 
 | Job              | Triggers       | Steps                                 |
 | ---------------- | -------------- | ------------------------------------- |
@@ -107,19 +110,8 @@ GitHub Actions runs on every push to `main`, tags `v*`, and pull requests.
 | **test**         | push, PR, tags | Install, Test (after static-check)    |
 | **docker**       | `v*` tags only | QEMU, Buildx, Login, Meta, Build+Push |
 
+A weekly [cleanup workflow](.github/workflows/cleanup-runs.yml) deletes workflow runs older than 7 days (keeping a minimum of 5).
+
 Docker images are pushed to `ghcr.io` as multi-arch (`linux/amd64` + `linux/arm64`) with GHA build cache.
 
 [Renovate](https://docs.renovatebot.com/) keeps dependencies up to date with platform automerge enabled.
-
-## Release
-
-```bash
-make release
-```
-
-This interactively prompts for a tag (with semver validation), then creates and pushes it. The CI pipeline builds and publishes multi-arch Docker images to `ghcr.io` on tagged releases.
-
-## References
-
-- [Creating a React app using Vite](https://fullstackcode.dev/2022/01/30/creating-react-js-app-using-vite-2-0/)
-- [Vite 3 vs Create React App: comparison and migration guide](https://blog.logrocket.com/vite-3-vs-create-react-app-comparison-migration-guide/)

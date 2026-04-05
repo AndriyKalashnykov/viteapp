@@ -5,29 +5,38 @@ CURRENTTAG := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 
 # === Tool Versions (pinned) ===
 NVM_VERSION      := 0.40.4
+NODE_VERSION     := 24
 PNPM_VERSION     := 10.33.0
 ACT_VERSION      := 0.2.87
 HADOLINT_VERSION := 2.14.0
 
+# CI-safe pnpm install: uses --frozen-lockfile when CI=true (set by GitHub Actions)
+PNPM_INSTALL := pnpm install $(if $(CI),--frozen-lockfile,)
+
+# Helper: source nvm in a subshell (nvm is a shell function, not a binary)
+define nvm-exec
+bash -c 'export NVM_DIR="$$HOME/.nvm"; [ -s "$$NVM_DIR/nvm.sh" ] && . "$$NVM_DIR/nvm.sh" && $(1)'
+endef
+
 #help: @ List available tasks
 help:
 	@echo "Usage: make COMMAND"
-	@echo "Commands :"
-	@grep -E '[a-zA-Z\.\-]+:.*?@ .*$$' $(MAKEFILE_LIST)| tr -d '#' | awk 'BEGIN {FS = ":.*?@ "}; {printf "\033[32m%-20s\033[0m - %s\n", $$1, $$2}'
+	@echo "Commands:"
+	@grep -E '[a-zA-Z\.\-]+:.*?@ .*$$' $(MAKEFILE_LIST)| tr -d '#' | awk 'BEGIN {FS = ":.*?@ "}; {printf "\033[32m%-30s\033[0m - %s\n", $$1, $$2}'
 
 #deps: @ Install dependencies if not present (node, pnpm, docker, git)
 deps:
 	@echo "Checking dependencies..."
 	@command -v node >/dev/null 2>&1 || { echo "Installing Node.js via nvm..."; \
 		if command -v nvm >/dev/null 2>&1; then \
-			nvm install; \
+			nvm install $(NODE_VERSION); \
 		elif [ -s "$$HOME/.nvm/nvm.sh" ]; then \
-			. "$$HOME/.nvm/nvm.sh" && nvm install; \
+			. "$$HOME/.nvm/nvm.sh" && nvm install $(NODE_VERSION); \
 		else \
 			echo "Installing nvm $(NVM_VERSION)..."; \
 			curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v$(NVM_VERSION)/install.sh | bash; \
 			export NVM_DIR="$$HOME/.nvm"; \
-			. "$$NVM_DIR/nvm.sh" && nvm install; \
+			. "$$NVM_DIR/nvm.sh" && nvm install $(NODE_VERSION); \
 		fi; \
 	}
 	@command -v pnpm >/dev/null 2>&1 || { echo "Installing pnpm $(PNPM_VERSION)..."; \
@@ -60,15 +69,15 @@ clean:
 	@rm -rf node_modules/ dist/
 
 #setup: @ Setup environment and git hooks (husky)
-setup: deps
-	@npx husky init
+setup: install
+	@pnpm exec husky init
 
 #install: @ Install project dependencies via pnpm
 install: deps
-	@pnpm install
+	@$(PNPM_INSTALL)
 
 #lint: @ Run ESLint and hadolint on source files
-lint: deps deps-hadolint
+lint: install deps-hadolint
 	@pnpm lint
 	@hadolint Dockerfile
 
@@ -76,17 +85,31 @@ lint: deps deps-hadolint
 build: install
 	@pnpm build
 
-#test: @ Run tests
+#test: @ Run Vitest tests
 test: install
 	@pnpm test
 
-#update: @ Update dependencies to latest compatible versions (pnpm update)
-update: deps
+#vulncheck: @ Check for known vulnerabilities in dependencies
+vulncheck: install
+	@pnpm audit
+
+#deps-update: @ Update dependencies to latest compatible versions (pnpm update)
+deps-update: install
 	@pnpm update
 
-#upgrade: @ Upgrade dependencies including major version bumps (pnpm upgrade)
-upgrade: deps
+#deps-upgrade: @ Upgrade dependencies including major version bumps (pnpm upgrade)
+deps-upgrade: install
 	@pnpm upgrade
+
+#deps-prune: @ Check for unused dependencies
+deps-prune: install
+	@echo "=== Dependency Pruning ==="
+	@npx --yes depcheck --ignores="@types/*" 2>/dev/null || true
+	@echo "=== Pruning complete ==="
+
+#deps-prune-check: @ Verify no prunable dependencies (CI gate)
+deps-prune-check: install
+	@npx --yes depcheck --ignores="@types/*"
 
 #run: @ Start Vite dev server with HMR
 run: install
@@ -109,22 +132,20 @@ image-build: build
 	@docker buildx build --load -t $(APP_NAME):$(CURRENTTAG) .
 
 #image-run: @ Run Docker container on port 8080
-image-run: deps image-stop
+image-run: image-stop
 	@docker run --rm -p 8080:8080 --name $(APP_NAME) $(APP_NAME):$(CURRENTTAG)
 
 #image-stop: @ Stop Docker container
-image-stop: deps
+image-stop:
 	@docker stop $(APP_NAME) 2>/dev/null || true
 
 #release: @ Create and push a new tag (VERSION=vX.Y.Z)
-release: deps
+release:
 	@bash -c 'read -p "New tag (current: $(CURRENTTAG)): " newtag && \
 		echo "$$newtag" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "Error: Tag must match vN.N.N"; exit 1; } && \
 		echo -n "Create and push $$newtag? [y/N] " && read ans && [ "$${ans:-N}" = y ] && \
-		git commit -a -s -m "Cut $$newtag release" && \
 		git tag $$newtag && \
 		git push origin $$newtag && \
-		git push && \
 		echo "Done."'
 
 #ci-run: @ Run GitHub Actions workflow locally using act
@@ -132,13 +153,14 @@ ci-run: deps-act
 	@act push --container-architecture linux/amd64
 
 #renovate: @ Run Renovate locally in dry-run mode (requires GITHUB_TOKEN)
-renovate: deps
-	@LOG_LEVEL=debug npx renovate --dry-run=full --platform=local --repository-cache=reset --token=$(GITHUB_TOKEN)
+renovate: install
+	@LOG_LEVEL=debug npx --yes renovate --dry-run=full --platform=local --repository-cache=reset --token=$(GITHUB_TOKEN)
 
 #renovate-validate: @ Validate Renovate configuration
 renovate-validate:
 	@npx --yes renovate-config-validator
 
 .PHONY: help deps deps-act deps-hadolint clean setup install lint build test \
-	update upgrade run format format-check ci image-build image-run image-stop \
+	vulncheck deps-update deps-upgrade deps-prune deps-prune-check \
+	run format format-check ci image-build image-run image-stop \
 	release ci-run renovate renovate-validate

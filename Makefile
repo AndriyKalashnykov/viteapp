@@ -4,10 +4,14 @@ APP_NAME   := viteapp
 CURRENTTAG := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 
 # === Tool Versions (pinned) ===
+# renovate: datasource=github-releases depName=nvm-sh/nvm extractVersion=^v(?<version>.*)$
 NVM_VERSION      := 0.40.4
 NODE_VERSION     := 24
+# renovate: datasource=npm depName=pnpm
 PNPM_VERSION     := 10.33.0
+# renovate: datasource=github-releases depName=nektos/act extractVersion=^v(?<version>.*)$
 ACT_VERSION      := 0.2.87
+# renovate: datasource=github-releases depName=hadolint/hadolint extractVersion=^v(?<version>.*)$
 HADOLINT_VERSION := 2.14.0
 
 # CI-safe pnpm install: uses --frozen-lockfile when CI=true (set by GitHub Actions)
@@ -53,14 +57,16 @@ deps:
 #deps-act: @ Install act for local CI runs
 deps-act: deps
 	@command -v act >/dev/null 2>&1 || { echo "Installing act $(ACT_VERSION)..."; \
-		curl -sSfL https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash -s -- -b /usr/local/bin v$(ACT_VERSION); \
+		mkdir -p $$HOME/.local/bin; \
+		curl -sSfL https://raw.githubusercontent.com/nektos/act/master/install.sh | bash -s -- -b $$HOME/.local/bin v$(ACT_VERSION); \
 	}
 
 #deps-hadolint: @ Install hadolint for Dockerfile linting
 deps-hadolint:
 	@command -v hadolint >/dev/null 2>&1 || { echo "Installing hadolint $(HADOLINT_VERSION)..."; \
+		mkdir -p $$HOME/.local/bin; \
 		curl -sSfL -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/download/v$(HADOLINT_VERSION)/hadolint-Linux-x86_64 && \
-		install -m 755 /tmp/hadolint /usr/local/bin/hadolint && \
+		install -m 755 /tmp/hadolint $$HOME/.local/bin/hadolint && \
 		rm -f /tmp/hadolint; \
 	}
 

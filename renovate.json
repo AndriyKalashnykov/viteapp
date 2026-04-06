@@ -11,6 +11,7 @@
   "automerge": true,
   "automergeType": "branch",
   "automergeStrategy": "squash",
+  "enabledManagers": ["npm", "github-actions", "dockerfile", "custom.regex"],
   "ignoreTests": false,
   "lockFileMaintenance": {
     "enabled": true,
@@ -27,38 +28,11 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Track nvm version in Makefile",
+      "description": "Update Makefile tool versions via inline renovate comments",
       "managerFilePatterns": ["/^Makefile$/"],
-      "matchStrings": ["NVM_VERSION\\s*:=\\s*(?<currentValue>.*?)\\n"],
-      "depNameTemplate": "nvm-sh/nvm",
-      "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^v(?<version>.*)$"
-    },
-    {
-      "customType": "regex",
-      "description": "Track pnpm version in Makefile",
-      "managerFilePatterns": ["/^Makefile$/"],
-      "matchStrings": ["PNPM_VERSION\\s*:=\\s*(?<currentValue>.*?)\\n"],
-      "depNameTemplate": "pnpm",
-      "datasourceTemplate": "npm"
-    },
-    {
-      "customType": "regex",
-      "description": "Track act version in Makefile",
-      "managerFilePatterns": ["/^Makefile$/"],
-      "matchStrings": ["ACT_VERSION\\s*:=\\s*(?<currentValue>.*?)\\n"],
-      "depNameTemplate": "nektos/act",
-      "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^v(?<version>.*)$"
-    },
-    {
-      "customType": "regex",
-      "description": "Track hadolint version in Makefile",
-      "managerFilePatterns": ["/^Makefile$/"],
-      "matchStrings": ["HADOLINT_VERSION\\s*:=\\s*(?<currentValue>.*?)\\n"],
-      "depNameTemplate": "hadolint/hadolint",
-      "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^v(?<version>.*)$"
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)( extractVersion=(?<extractVersion>[^\\s]+))?( versioning=(?<versioning>[^\\s]+))?\\n[A-Z_]+\\s*:=\\s*(?<currentValue>[^\\s]+)"
+      ]
     }
   ],
   "packageRules": [

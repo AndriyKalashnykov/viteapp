@@ -4,7 +4,35 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths-ignore:
+      - "*.md"
+      - "!CLAUDE.md"
+      - "docs/**"
+      - "specs/**"
+      - "LICENSE"
+      - ".gitignore"
+      - ".claudeignore"
+      - ".claude/**"
+      - "benchmarks/**"
+      - "**.png"
+      - "**.jpg"
+      - "**.gif"
+      - "**.svg"
   pull_request:
+    paths-ignore:
+      - "*.md"
+      - "!CLAUDE.md"
+      - "docs/**"
+      - "specs/**"
+      - "LICENSE"
+      - ".gitignore"
+      - ".claudeignore"
+      - ".claude/**"
+      - "benchmarks/**"
+      - "**.png"
+      - "**.jpg"
+      - "**.gif"
+      - "**.svg"
   workflow_call:
 
 concurrency:
@@ -129,7 +157,6 @@ jobs:
         uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
         with:
           images: ghcr.io/${{ env.OWNER_LC }}/viteapp
-          flavor: latest=true
           tags: |
             type=semver,pattern=v{{version}}
             type=semver,pattern=v{{major}}.{{minor}}

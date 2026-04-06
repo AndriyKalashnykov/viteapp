@@ -105,7 +105,7 @@ Cleanup (`.github/workflows/cleanup-runs.yml`):
 
 ## Upgrade Backlog
 
-Last reviewed: 2026-04-05
+Last reviewed: 2026-04-06
 
 - [ ] Evaluate husky alternatives (`simple-git-hooks`, `lefthook`) if husky remains without releases past 2026 Q3
 
@@ -113,11 +113,11 @@ Last reviewed: 2026-04-05
 
 Use the following skills when working on related files:
 
-| File(s)                   | Skill          |
-| ------------------------- | -------------- |
-| `Makefile`                | `/makefile`    |
-| `renovate.json`           | `/renovate`    |
-| `README.md`               | `/readme`      |
-| `.github/workflows/*.yml` | `/ci-workflow` |
+| File(s)                          | Skill          |
+| -------------------------------- | -------------- |
+| `Makefile`                       | `/makefile`    |
+| `renovate.json`                  | `/renovate`    |
+| `README.md`                      | `/readme`      |
+| `.github/workflows/*.{yml,yaml}` | `/ci-workflow` |
 
 When spawning subagents, always pass conventions from the respective skill into the agent's prompt.

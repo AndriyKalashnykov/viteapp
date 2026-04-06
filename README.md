@@ -12,9 +12,9 @@ React 19 SPA built with [Vite 8](https://vite.dev) and TypeScript (strict mode).
 ```bash
 make deps      # install system dependencies (node, pnpm)
 make install   # install project dependencies
-make lint      # run ESLint and hadolint
 make build     # type-check and build for production
 make run       # start Vite dev server with HMR
+# Open http://localhost:5173
 ```
 
 ## Prerequisites

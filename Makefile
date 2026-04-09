@@ -14,6 +14,11 @@ ACT_VERSION      := 0.2.87
 # renovate: datasource=github-releases depName=hadolint/hadolint extractVersion=^v(?<version>.*)$
 HADOLINT_VERSION := 2.14.0
 
+# Ensure tools installed to ~/.local/bin (hadolint, act) are on PATH for all
+# recipes — needed inside the act runner container where this path is not
+# preconfigured. Exported so every sub-shell the recipes spawn inherits it.
+export PATH := $(HOME)/.local/bin:$(PATH)
+
 # CI-safe pnpm install: uses --frozen-lockfile when CI=true (set by GitHub Actions)
 PNPM_INSTALL := pnpm install $(if $(CI),--frozen-lockfile,)
 

@@ -68,7 +68,7 @@ Vite config (`vite.config.ts`):
 
 ## Docker & Deployment
 
-Multi-stage build: Node 24 Alpine builder -> `nginxinc/nginx-unprivileged` server.
+Multi-stage build: Node 24 Alpine builder -> `nginxinc/nginx-unprivileged:*-alpine-slim` server (runs `apk upgrade --no-cache` to pick up CVE fixes not yet rebuilt into the base image).
 
 Nginx (`nginx/nginx.conf`):
 

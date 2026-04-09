@@ -9,7 +9,14 @@ COPY . .
 RUN pnpm build
 
 # https://hub.docker.com/r/nginxinc/nginx-unprivileged/tags
-FROM nginxinc/nginx-unprivileged:1.29.5@sha256:bd68c793125e39123d1fdf3c0e9b7d4218667b9db049ed46b1b71aa4cb4493ef AS server
+# Alpine-slim: smaller attack surface than the Debian variant (no libpng/libtiff
+# for a static-file server), fewer CVEs. `apk upgrade --no-cache` patches any
+# HIGH/CRITICAL CVEs fixed upstream but not yet rebuilt into the base image
+# (e.g. zlib CVE-2026-22184). Required to keep the Trivy pre-push gate clean.
+FROM nginxinc/nginx-unprivileged:1.29.5-alpine-slim@sha256:e3a8cb843fb17e660bc43c77358a940f00eef7f99545ed3121f476b845109fdf AS server
+USER 0
+RUN apk upgrade --no-cache
+USER 101
 COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder ./app/dist /usr/share/nginx/html
 EXPOSE 8080

@@ -85,9 +85,9 @@ GitHub Actions (`.github/workflows/ci.yml`):
 - `static-check` job: checkout -> pnpm/action-setup -> setup-node (with pnpm cache) -> install -> format-check -> lint
 - `build` job: install -> build (runs after `static-check`)
 - `test` job: install -> test (runs after `static-check`, parallel with `build`)
-- `docker` job: QEMU -> Buildx -> login -> meta -> build+push (runs only on `v*` tags, after `build` + `test` pass)
+- `docker` job (runs only on `v*` tags, after `build` + `test` pass): QEMU -> Buildx -> meta -> build-for-scan (single-arch, `load: true`) -> Trivy image scan (CRITICAL/HIGH blocking, `ignore-unfixed: true`) -> smoke test (`curl /internal/isalive`) -> GHCR login -> multi-arch build+push with `provenance: mode=max` and `sbom: true` (captures digest) -> cosign keyless signing of each tag by digest
 - Docker images pushed to `ghcr.io` as multi-arch (`amd64` + `arm64`) with GHA build cache
-- Permissions: `contents: read` at workflow level; `packages: write` only on docker job
+- Permissions: `contents: read` at workflow level; `packages: write` + `id-token: write` (cosign OIDC) on docker job only
 
 Cleanup (`.github/workflows/cleanup-runs.yml`):
 

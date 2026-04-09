@@ -103,15 +103,39 @@ pnpm prettier:diff    # Check formatting without writing
 
 GitHub Actions runs on every push to `main`, tags `v*`, pull requests, and `workflow_call` (reusable).
 
-| Job              | Triggers       | Steps                                 |
-| ---------------- | -------------- | ------------------------------------- |
-| **static-check** | push, PR, tags | Install, Format check, Lint           |
-| **build**        | push, PR, tags | Install, Build (after static-check)   |
-| **test**         | push, PR, tags | Install, Test (after static-check)    |
-| **docker**       | `v*` tags only | QEMU, Buildx, Login, Meta, Build+Push |
+| Job              | Triggers       | Steps                                                                  |
+| ---------------- | -------------- | ---------------------------------------------------------------------- |
+| **static-check** | push, PR, tags | Install, Format check, Lint                                            |
+| **build**        | push, PR, tags | Install, Build (after static-check)                                    |
+| **test**         | push, PR, tags | Install, Test (after static-check)                                     |
+| **docker**       | `v*` tags only | Build-for-scan → Trivy → Smoke test → Multi-arch push → Cosign signing |
 
 A weekly [cleanup workflow](.github/workflows/cleanup-runs.yml) deletes workflow runs older than 7 days (keeping a minimum of 5).
 
 Docker images are pushed to `ghcr.io` as multi-arch (`linux/amd64` + `linux/arm64`) with GHA build cache.
+
+### Pre-push image hardening
+
+The `docker` job runs the following gates **before** any image is pushed to GHCR. Any failure blocks the release.
+
+| #   | Gate                                 | Catches                                            | Tool                                             |
+| --- | ------------------------------------ | -------------------------------------------------- | ------------------------------------------------ |
+| 1   | Build local single-arch image        | Build regressions on the runner architecture       | `docker/build-push-action` with `load: true`     |
+| 2   | **Trivy image scan** (CRITICAL/HIGH) | CVEs in the nginx base image, OS packages, layers  | `aquasecurity/trivy-action` with `image-ref:`    |
+| 3   | **Smoke test**                       | Container boots and serves `/internal/isalive`     | `docker run` + `curl` health probe               |
+| 4   | Multi-arch build + push              | Publishes for both `linux/amd64` and `linux/arm64` | `docker/build-push-action`                       |
+| 5   | **SLSA L2 build provenance**         | Cryptographic record of how the image was built    | `docker/build-push-action` native (`mode=max`)   |
+| 6   | **SBOM attestation**                 | Software Bill of Materials in the manifest         | `docker/build-push-action` native (`sbom: true`) |
+| 7   | **Cosign keyless OIDC signing**      | Sigstore signature on the manifest digest          | `sigstore/cosign-installer` + `cosign sign`      |
+
+Verify a published image's signature with:
+
+```bash
+cosign verify ghcr.io/andriykalashnykov/viteapp:<tag> \
+  --certificate-identity-regexp 'https://github\.com/AndriyKalashnykov/viteapp/.+' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+> Note: GHCR's web UI may show cosmetic `unknown/unknown` rows alongside the platform manifests — those are the attestation manifests (provenance + SBOM). `docker pull` is unaffected.
 
 [Renovate](https://docs.renovatebot.com/) keeps dependencies up to date with platform automerge enabled.

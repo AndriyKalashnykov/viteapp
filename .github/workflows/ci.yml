@@ -123,11 +123,12 @@ jobs:
   docker:
     if: startsWith(github.ref, 'refs/tags/')
     needs: [build, test]
-    timeout-minutes: 15
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      id-token: write # cosign keyless OIDC
 
     steps:
       - name: Checkout
@@ -141,16 +142,9 @@ jobs:
 
       - name: Convert owner to lower case
         run: |
-          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
+          echo "OWNER_LC=${OWNER,,}" >>"${GITHUB_ENV}"
         env:
           OWNER: "${{ github.repository_owner }}"
-
-      - name: Login to image repository
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker meta
         id: meta
@@ -162,7 +156,66 @@ jobs:
             type=semver,pattern=v{{major}}.{{minor}}
             type=semver,pattern=v{{major}}
 
-      - name: Build and push
+      # =================================================================
+      # GATE 1: Build single-arch image locally for scanning + smoke test
+      # =================================================================
+      - name: Build image for scan (single-arch, load locally)
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: viteapp:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # =================================================================
+      # GATE 2: Trivy image scan (CRITICAL/HIGH blocking)
+      # =================================================================
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: viteapp:scan
+          scanners: "vuln,secret,misconfig"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+          ignore-unfixed: true
+
+      # =================================================================
+      # GATE 3: Smoke test against nginx /internal/isalive endpoint
+      # =================================================================
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          docker run -d --name=viteapp-smoke -p 8080:8080 viteapp:scan
+          echo "Waiting up to 30s for nginx to become healthy..."
+          end=$((SECONDS + 30))
+          while [ $SECONDS -lt $end ]; do
+            if curl -fsS http://localhost:8080/internal/isalive >/dev/null 2>&1; then
+              echo "PASS: viteapp responded on /internal/isalive"
+              docker rm -f viteapp-smoke >/dev/null
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "FAIL: viteapp did not become healthy within 30s"
+          docker logs viteapp-smoke
+          docker rm -f viteapp-smoke >/dev/null || true
+          exit 1
+
+      # =================================================================
+      # All gates passed → publish multi-arch with attestations
+      # =================================================================
+      - name: Login to image repository
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (multi-arch + provenance + SBOM)
+        id: push
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           context: .
@@ -171,5 +224,25 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          sbom: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # =================================================================
+      # Post-push: cosign keyless signing
+      # =================================================================
+      - name: Install cosign
+        uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
+
+      - name: Sign image with cosign (keyless)
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            echo "→ cosign sign ${tag}@${DIGEST}"
+            cosign sign --yes "${tag}@${DIGEST}"
+          done <<< "${TAGS}"

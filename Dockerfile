@@ -8,14 +8,26 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-# https://hub.docker.com/r/nginxinc/nginx-unprivileged/tags
-# Alpine-slim: smaller attack surface than the Debian variant (no libpng/libtiff
-# for a static-file server), fewer CVEs. `apk upgrade --no-cache` patches any
-# HIGH/CRITICAL CVEs fixed upstream but not yet rebuilt into the base image
-# (e.g. zlib CVE-2026-22184). Required to keep the Trivy pre-push gate clean.
-FROM nginxinc/nginx-unprivileged:1.29.5-alpine-slim@sha256:e3a8cb843fb17e660bc43c77358a940f00eef7f99545ed3121f476b845109fdf AS server
-USER 0
-RUN apk upgrade --no-cache
+# https://hub.docker.com/_/nginx/tags
+# Official nginx alpine image. We add the unprivileged-user setup ourselves
+# (UID 101, /tmp PID file, chown of writable dirs) so the image still runs as
+# non-root and listens on port 8080. Tracking the official image directly gets
+# us upstream nginx security patches the same day they ship — the
+# nginxinc/nginx-unprivileged variant lags the official rebuild cadence by
+# multiple patch releases (it was stuck at 1.29.5 while upstream shipped
+# 1.29.6/7/8). `apk upgrade --no-cache` patches any HIGH/CRITICAL Alpine CVEs
+# fixed upstream but not yet rebuilt into the base image. Required to keep the
+# Trivy pre-push gate clean.
+FROM nginx:1.29.8-alpine@sha256:2c4de29ca0588f9b56ced6691e0c605c2fd00501478e2e12949ba062304bc1ca AS server
+# Drop the `user nginx;` directive (we run the entire process as UID 101 via
+# the USER instruction below — no setuid required) and relocate the PID file
+# to /tmp because /run is not writable by an unprivileged user. Default temp
+# paths under /var/cache/nginx are made writable via chown. Mirrors the
+# transformations done by nginxinc/nginx-unprivileged.
+RUN apk upgrade --no-cache && \
+    sed -i '/^user  nginx;/d' /etc/nginx/nginx.conf && \
+    sed -i 's,^pid        /run/nginx.pid;,pid        /tmp/nginx.pid;,' /etc/nginx/nginx.conf && \
+    chown -R 101:101 /var/cache/nginx /var/log/nginx
 USER 101
 COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder ./app/dist /usr/share/nginx/html

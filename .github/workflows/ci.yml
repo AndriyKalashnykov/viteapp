@@ -48,14 +48,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - name: Set up pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
@@ -64,11 +64,8 @@ jobs:
       - name: Install dependencies
         run: make install
 
-      - name: Format check
-        run: make format-check
-
-      - name: Lint
-        run: make lint
+      - name: Static check
+        run: make static-check
 
   build:
     needs: [static-check]
@@ -76,14 +73,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
@@ -101,14 +96,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
@@ -117,8 +110,8 @@ jobs:
       - name: Install dependencies
         run: make install
 
-      - name: Test
-        run: make test
+      - name: Coverage check
+        run: make coverage-check
 
   docker:
     if: startsWith(github.ref, 'refs/tags/')
@@ -131,26 +124,20 @@ jobs:
       id-token: write # cosign keyless OIDC
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+      - uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
-
-      - name: Convert owner to lower case
-        run: |
-          echo "OWNER_LC=${OWNER,,}" >>"${GITHUB_ENV}"
-        env:
-          OWNER: "${{ github.repository_owner }}"
+      - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
         with:
-          images: ghcr.io/${{ env.OWNER_LC }}/viteapp
+          # Hardcoded lowercase: ${{ github.repository }} preserves the
+          # mixed-case GitHub username and Docker rejects uppercase in image
+          # names. metadata-action does not auto-lowercase (issue #517).
+          images: ghcr.io/andriykalashnykov/viteapp
           # Bare semver on Docker image tags. The `{{version}}` template
           # automatically strips the `v` from source git tag `vX.Y.Z`.
           flavor: latest=true
@@ -159,9 +146,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
 
-      # =================================================================
-      # GATE 1: Build single-arch image locally for scanning + smoke test
-      # =================================================================
+      # Gate 1: build single-arch image locally for scanning + smoke test.
       - name: Build image for scan
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
@@ -173,9 +158,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # =================================================================
-      # GATE 2: Trivy image scan (CRITICAL/HIGH blocking)
-      # =================================================================
+      # Gate 2: Trivy image scan — blocks on CRITICAL/HIGH.
       - name: Trivy image scan
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
@@ -185,31 +168,84 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
 
-      # =================================================================
-      # GATE 3: Smoke test against nginx /internal/isalive endpoint
-      # =================================================================
+      # Gate 3: smoke test against nginx /internal/isalive. Leaves the
+      # container running so the DAST gate (Gate 4) can scan the same instance.
       - name: Smoke test
         run: |
           set -euo pipefail
-          docker run -d --name=viteapp-smoke -p 8080:8080 viteapp:scan
+          docker run -d --name=viteapp-test -p 8080:8080 viteapp:scan
           echo "Waiting up to 30s for nginx to become healthy..."
           end=$((SECONDS + 30))
           while [ $SECONDS -lt $end ]; do
             if curl -fsS http://localhost:8080/internal/isalive >/dev/null 2>&1; then
               echo "PASS: viteapp responded on /internal/isalive"
-              docker rm -f viteapp-smoke >/dev/null
               exit 0
             fi
             sleep 2
           done
           echo "FAIL: viteapp did not become healthy within 30s"
-          docker logs viteapp-smoke
-          docker rm -f viteapp-smoke >/dev/null || true
+          docker logs viteapp-test
           exit 1
 
-      # =================================================================
-      # All gates passed → publish multi-arch with attestations
-      # =================================================================
+      # Gate 4: ZAP baseline DAST scan against the running container.
+      # The ZAP image is large (~3.4 GB), so we cache it as a tarball across
+      # CI runs keyed by the pinned ZAP version. -I makes ZAP exit 0 on
+      # warnings (only FAIL severity blocks); WARN findings are still
+      # captured in the uploaded report for review.
+      - name: Cache ZAP image
+        id: cache-zap
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: /tmp/zap-image.tar
+          key: zap-image-${{ env.ZAP_VERSION }}-${{ runner.os }}
+        env:
+          ZAP_VERSION: 2.17.0
+
+      - name: Load or pull ZAP image
+        env:
+          ZAP_VERSION: 2.17.0
+        run: |
+          set -euo pipefail
+          if [ -f /tmp/zap-image.tar ]; then
+            echo "Loading ZAP from cache..."
+            docker load -i /tmp/zap-image.tar
+          else
+            echo "Pulling ghcr.io/zaproxy/zaproxy:${ZAP_VERSION}..."
+            docker pull ghcr.io/zaproxy/zaproxy:${ZAP_VERSION}
+            docker save ghcr.io/zaproxy/zaproxy:${ZAP_VERSION} -o /tmp/zap-image.tar
+          fi
+
+      - name: DAST baseline scan
+        env:
+          ZAP_VERSION: 2.17.0
+        run: |
+          set -euo pipefail
+          mkdir -p "${GITHUB_WORKSPACE}/zap-output"
+          chmod 777 "${GITHUB_WORKSPACE}/zap-output"
+          docker run --rm --network host \
+            -v "${GITHUB_WORKSPACE}/zap-output:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:${ZAP_VERSION} \
+            zap-baseline.py \
+              -t http://localhost:8080 \
+              -I \
+              -r zap-report.html \
+              -J zap-report.json \
+              -w zap-report.md
+
+      - name: Tear down test container
+        if: always()
+        run: docker rm -f viteapp-test 2>/dev/null || true
+
+      - name: Upload DAST report
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: zap-baseline-report
+          path: zap-output/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      # All gates passed → publish multi-arch with attestations.
       - name: Log in to GHCR
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
@@ -232,9 +268,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # =================================================================
-      # Post-push: cosign keyless signing
-      # =================================================================
+      # Post-push: cosign keyless signing.
       - name: Install cosign
         uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
 

@@ -4,11 +4,10 @@ APP_NAME   := viteapp
 CURRENTTAG := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 
 # === Tool Versions (pinned) ===
-# renovate: datasource=github-releases depName=nvm-sh/nvm extractVersion=^v(?<version>.*)$
-NVM_VERSION      := 0.40.4
-# NODE_VERSION is derived from .nvmrc (single source of truth — Dockerfile,
-# CI, and Makefile all consume it). Cannot be tracked by Renovate (major-only
-# values don't match a datasource version pattern).
+# Local dev uses mise (https://mise.jdx.dev) — the portfolio-wide version
+# manager. It reads .nvmrc natively, so NODE_VERSION stays derived from the
+# single source of truth. CI uses actions/setup-node with node-version-file.
+# NODE_VERSION cannot be tracked by Renovate (.nvmrc is the trackable input).
 NODE_VERSION     := $(shell cat .nvmrc 2>/dev/null || echo 24)
 # renovate: datasource=npm depName=pnpm
 PNPM_VERSION     := 10.33.0
@@ -39,20 +38,25 @@ help:
 	@echo "Commands:"
 	@grep -E '[a-zA-Z\.\-]+:.*?@ .*$$' $(MAKEFILE_LIST)| tr -d '#' | awk 'BEGIN {FS = ":.*?@ "}; {printf "\033[32m%-30s\033[0m - %s\n", $$1, $$2}'
 
-#deps: @ Install dependencies if not present (node, pnpm, docker, git)
+#deps: @ Install dependencies if not present (node via mise, pnpm, docker, git)
 deps:
-	@command -v node >/dev/null 2>&1 || { echo "Installing Node.js $(NODE_VERSION) via nvm..."; \
-		if command -v nvm >/dev/null 2>&1; then \
-			nvm install $(NODE_VERSION); \
-		elif [ -s "$$HOME/.nvm/nvm.sh" ]; then \
-			. "$$HOME/.nvm/nvm.sh" && nvm install $(NODE_VERSION); \
-		else \
-			echo "Installing nvm $(NVM_VERSION)..."; \
-			curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v$(NVM_VERSION)/install.sh | bash; \
-			export NVM_DIR="$$HOME/.nvm"; \
-			. "$$NVM_DIR/nvm.sh" && nvm install $(NODE_VERSION); \
-		fi; \
-	}
+	@# Local dev: bootstrap mise if missing (installs to ~/.local/bin, no sudo).
+	@# CI uses actions/setup-node, so skip via CI guard.
+	@if [ -z "$$CI" ] && ! command -v mise >/dev/null 2>&1 && ! command -v node >/dev/null 2>&1; then \
+		echo "Installing mise (portfolio-wide version manager, no root required)..."; \
+		curl -fsSL https://mise.run | sh; \
+		echo "mise installed at ~/.local/bin/mise. Activate in your shell:"; \
+		echo '  bash: echo '"'"'eval "$$(~/.local/bin/mise activate bash)"'"'"' >> ~/.bashrc'; \
+		echo '  zsh:  echo '"'"'eval "$$(~/.local/bin/mise activate zsh)"'"'"'  >> ~/.zshrc'; \
+		echo "Then re-run 'make deps' to install Node $(NODE_VERSION) from .nvmrc."; \
+		exit 0; \
+	fi
+	@# mise reads .nvmrc natively and installs the pinned Node version.
+	@if [ -z "$$CI" ] && command -v mise >/dev/null 2>&1 && ! command -v node >/dev/null 2>&1; then \
+		echo "Installing Node $(NODE_VERSION) via mise (reads .nvmrc)..."; \
+		mise install; \
+	fi
+	@command -v node >/dev/null 2>&1 || { echo "Error: node not found. Install mise (https://mise.run) or Node $(NODE_VERSION) manually."; exit 1; }
 	@command -v pnpm >/dev/null 2>&1 || { echo "Installing pnpm $(PNPM_VERSION) via corepack..."; \
 		command -v corepack >/dev/null 2>&1 || { echo "Error: corepack not found; upgrade Node to >=16.10"; exit 1; }; \
 		corepack enable && corepack prepare pnpm@$(PNPM_VERSION) --activate; \

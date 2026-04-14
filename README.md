@@ -47,8 +47,9 @@ make run       # start Vite dev server with HMR
 | Tool                                           | Version | Purpose                     |
 | ---------------------------------------------- | ------- | --------------------------- |
 | [GNU Make](https://www.gnu.org/software/make/) | 3.81+   | Build orchestration         |
-| [Node.js](https://nodejs.org/)                 | 24+     | JavaScript runtime          |
-| [pnpm](https://pnpm.io/)                       | 10.33+  | Package manager             |
+| [mise](https://mise.jdx.dev/)                  | latest  | Portfolio version manager — auto-installed by `make deps`; reads `.nvmrc` natively |
+| [Node.js](https://nodejs.org/)                 | 24+     | JavaScript runtime — installed by mise from `.nvmrc` |
+| [pnpm](https://pnpm.io/)                       | 10.33+  | Package manager — installed by `make deps` via corepack |
 | [Docker](https://www.docker.com/)              | latest  | Container builds (optional) |
 | [Git](https://git-scm.com/)                    | latest  | Version control             |
 

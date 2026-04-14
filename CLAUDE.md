@@ -4,6 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Development Commands
 
+**Version manager:** mise (portfolio-wide; reads `.nvmrc` natively, auto-installed by `make deps`)
 **Package manager:** pnpm (via corepack)
 
 ```bash

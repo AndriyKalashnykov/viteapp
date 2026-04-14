@@ -80,7 +80,7 @@ Single-page React application built with Vite and served as a static bundle by n
 
 Multi-stage Docker build: Node 24 Alpine builder → official `nginx:1.29-alpine` server with a DIY unprivileged-user setup. The Dockerfile drops the `user nginx;` directive from `nginx.conf`, relocates the PID file from `/run/nginx.pid` (root-only) to `/tmp/nginx.pid`, chowns `/var/cache/nginx` and `/var/log/nginx` to UID 101, and runs the entire process under `USER 101`. `apk upgrade --no-cache` patches Alpine OS CVEs.
 
-We previously used `nginxinc/nginx-unprivileged` but switched to the official image because the unprivileged variant lagged the official rebuild cadence by multiple patch releases (e.g. stuck at 1.29.5 while upstream shipped 1.29.6/7/8).
+The project previously used `nginxinc/nginx-unprivileged` but switched to the official image because the unprivileged variant lagged the official rebuild cadence by multiple patch releases (e.g. stuck at 1.29.5 while upstream shipped 1.29.6/7/8).
 
 Nginx (`nginx/nginx.conf`):
 
@@ -117,7 +117,8 @@ Nginx (`nginx/nginx.conf`):
 | `make vulncheck`    | Check for known vulnerabilities in dependencies (moderate+)       |
 | `make trivy-fs`     | Trivy filesystem scan (vuln, secret, misconfig)                   |
 | `make secrets`      | Scan repository for leaked secrets via gitleaks                   |
-| `make static-check` | Composite quality gate (format-check, lint, vulncheck, trivy-fs, secrets) |
+| `make static-check` | Composite quality gate (format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint) |
+| `make mermaid-lint` | Parse every ` ```mermaid ` fenced block via pinned `minlag/mermaid-cli`   |
 | `make format`       | Format source files with Prettier                                 |
 | `make format-check` | Check formatting without writing                                  |
 

@@ -7,6 +7,18 @@
 
 React 19 SPA built with [Vite 8](https://vite.dev) and TypeScript (strict mode). Deployed as a multi-arch Docker image via nginx.
 
+```mermaid
+C4Context
+  title System Context — Vite App
+
+  Person(user, "End User", "Loads the SPA in a browser")
+  System(spa, "Vite App", "React 19 SPA served as static bundle via nginx")
+  System_Ext(ghcr, "GHCR", "ghcr.io/andriykalashnykov/viteapp — multi-arch OCI image, cosign-signed")
+
+  Rel(user, spa, "Loads", "HTTPS (serves index.html, JS, CSS)")
+  Rel(spa, ghcr, "Pulled from", "docker pull")
+```
+
 | Component        | Technology                                                  |
 | ---------------- | ----------------------------------------------------------- |
 | Language         | TypeScript 6.0 (strict mode)                                |

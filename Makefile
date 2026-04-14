@@ -22,6 +22,8 @@ TRIVY_VERSION    := 0.69.3
 GITLEAKS_VERSION := 8.30.1
 # renovate: datasource=github-releases depName=zaproxy/zaproxy extractVersion=^v(?<version>.*)$
 ZAP_VERSION      := 2.17.0
+# renovate: datasource=docker depName=minlag/mermaid-cli
+MERMAID_CLI_VERSION := 11.12.0
 
 # Ensure tools installed to ~/.local/bin (hadolint, act) are on PATH for all
 # recipes — needed inside the act runner container where this path is not
@@ -127,8 +129,25 @@ trivy-fs: deps-trivy
 secrets: deps-gitleaks
 	@gitleaks detect --source . --verbose --redact --no-banner
 
-#static-check: @ Composite quality gate (format-check, lint, vulncheck, trivy-fs, secrets)
-static-check: format-check lint vulncheck trivy-fs secrets
+#mermaid-lint: @ Parse every ```mermaid fenced block in README.md / CLAUDE.md via pinned mermaid-cli
+mermaid-lint:
+	@bash -eu -c '\
+		files=$$(grep -lF "\`\`\`mermaid" README.md CLAUDE.md 2>/dev/null || true); \
+		if [ -z "$$files" ]; then echo "mermaid-lint: no mermaid blocks found"; exit 0; fi; \
+		tmp=$$(mktemp -d); trap "rm -rf $$tmp" EXIT; \
+		i=0; for f in $$files; do \
+			awk -v dir="$$tmp" "/^\`\`\`mermaid\$$/ { inblk=1; idx++; out=sprintf(\"%s/%d.mmd\", dir, idx); next } /^\`\`\`\$$/ { if (inblk) { close(out); inblk=0 } next } inblk { print > out }" "$$f"; \
+		done; \
+		for mmd in $$tmp/*.mmd; do \
+			[ -f "$$mmd" ] || continue; \
+			echo "mermaid-lint: parsing $$mmd"; \
+			docker run --rm -u $$(id -u):$$(id -g) -v "$$tmp":/data minlag/mermaid-cli:$(MERMAID_CLI_VERSION) \
+				-i "/data/$$(basename $$mmd)" -o "/data/$$(basename $$mmd .mmd).svg" >/dev/null; \
+		done; \
+		echo "mermaid-lint passed."'
+
+#static-check: @ Composite quality gate (format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)
+static-check: format-check lint vulncheck trivy-fs secrets mermaid-lint
 	@echo "static-check passed."
 
 #deps-update: @ Update dependencies to latest compatible versions (pnpm update)
@@ -258,4 +277,4 @@ renovate-validate:
 	install lint build test coverage-check vulncheck trivy-fs secrets \
 	static-check deps-update deps-prune deps-prune-check run format \
 	format-check ci image-build image-run image-stop e2e dast release \
-	ci-run ci-run-tag renovate renovate-validate
+	ci-run ci-run-tag renovate renovate-validate mermaid-lint

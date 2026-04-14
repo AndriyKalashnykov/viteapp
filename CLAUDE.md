@@ -119,6 +119,7 @@ Cleanup (`.github/workflows/cleanup-runs.yml`):
 - **Renovate:** auto-merges all dependency updates after CI passes (no restrictive schedule, ASAP merging)
 - **Prettier:** uses defaults (no config file)
 - **Vitest:** unit tests with `@testing-library/react` and `jest-dom` matchers; coverage via `@vitest/coverage-v8` with thresholds; config in `vite.config.ts`; setup in `src/test/setup.ts`
+- **Mermaid lint:** every `` ```mermaid `` block in README.md / CLAUDE.md is parsed by pinned `minlag/mermaid-cli` (`make mermaid-lint`); part of `make static-check` composite gate
 
 ## Upgrade Backlog
 
@@ -143,5 +144,6 @@ Use the following skills when working on related files:
 | `renovate.json`                  | `/renovate`    |
 | `README.md`                      | `/readme`      |
 | `.github/workflows/*.{yml,yaml}` | `/ci-workflow` |
+| `README.md` / `CLAUDE.md` (Mermaid blocks)   | `/architecture-diagrams` |
 
 When spawning subagents, always pass conventions from the respective skill into the agent's prompt.

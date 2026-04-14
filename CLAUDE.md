@@ -122,12 +122,16 @@ Cleanup (`.github/workflows/cleanup-runs.yml`):
 
 ## Upgrade Backlog
 
-Last reviewed: 2026-04-10
+Last reviewed: 2026-04-14
 
 - [x] ~~Evaluate husky alternatives — removed husky entirely (CI format-check is the safety net)~~
 - [x] ~~Switch off `nginxinc/nginx-unprivileged` because of upstream lag — migrated to official `nginx:1.29.8-alpine` with DIY UID 101 / `/tmp` PID file (2026-04-10)~~
 - [ ] **`eslint-plugin-react-hooks` peer dep warning** — currently 7.0.1, peer declares `eslint@^3..^9` but project pins eslint 10. Plugin works at runtime; warning is cosmetic. Track for next stable release that lists eslint 10 in peer deps.
 - [ ] **Optional: enable Renovate `github-runners` manager** — would generate auto-PRs when GitHub deprecates `ubuntu-22.04` / `ubuntu-24.04` runner images. Currently disabled; `ubuntu-latest` rarely breaks but the warning window is short when it does.
+- [ ] **CSP / COEP headers on nginx** — ZAP baseline reports WARN-NEW for missing `Content-Security-Policy` (10038) and `Cross-Origin-Embedder-Policy` (90004). Currently warn-only (`-I` flag). Adding a CSP tuned for the SPA bundle hashes would harden the response and clear the DAST warnings.
+- [ ] **Tighten ZAP baseline to non-warn mode** — once CSP/COEP headers are added, drop the `-I` flag so new DAST regressions fail CI rather than warn.
+- [ ] **nginx 1.29.8 → 1.30.0 minor bump** — upstream released 1.30.0; Renovate will PR. Watch for the 1.29.x → 1.30 minor changelog.
+- [ ] **Playwright browser-level e2e (optional)** — current curl-based e2e covers nginx surface; adding a Playwright smoke against the built bundle would catch Rolldown/terser/chunking regressions jsdom cannot see. Low priority; counter logic is already unit-tested.
 
 ## Skills
 

@@ -26,6 +26,7 @@ make clean             # Remove node_modules/ and dist/
 make image-build       # Build Docker image (nginx-unprivileged)
 make image-run         # Run Docker container on port 8080
 make image-stop        # Stop Docker container
+make e2e               # E2E tests against the built container (health, SPA fallback, security headers)
 make release           # Create and push a new tag (interactive prompt for vX.Y.Z)
 make deps-act          # Install act for local CI runs
 make deps-hadolint     # Install hadolint for Dockerfile linting
@@ -49,6 +50,16 @@ pnpm prettier:diff     # Check formatting without writing
 ```
 
 Test runner: `pnpm test` runs Vitest (`vitest run`). Test setup in `src/test/setup.ts` (jest-dom matchers).
+
+**Test layers:**
+
+| Layer | Target | Scope | Typical runtime |
+|-------|--------|-------|-----------------|
+| Unit | `make test` / `make coverage-check` | React components via jsdom; 80% coverage gate | seconds |
+| E2E | `make e2e` | Built container through nginx: `/internal/isalive`, `/internal/isready`, SPA fallback, security headers | ~15s (image build + 11 curl assertions) |
+| DAST | `make dast` / CI `docker` job | ZAP baseline scan against the running container | minutes |
+
+No integration layer — the app is a static SPA with no DB/broker/inter-service calls. `make e2e` is the first layer that exercises the full nginx surface.
 
 ## Architecture
 
@@ -89,7 +100,8 @@ GitHub Actions (`.github/workflows/ci.yml`):
 - `static-check` job: checkout (`fetch-depth: 0` for gitleaks history) -> pnpm/action-setup -> setup-node (with pnpm cache) -> install -> `make static-check` (format-check + lint + vulncheck + trivy-fs + secrets, composite quality gate)
 - `build` job: install -> `make build` (runs after `static-check`)
 - `test` job: install -> `make coverage-check` (runs after `static-check`, parallel with `build`)
-- `docker` job (runs only on `v*` tags, after `build` + `test` pass): QEMU -> Buildx -> meta -> build-for-scan (single-arch, `load: true`) -> Trivy image scan (CRITICAL/HIGH blocking, `ignore-unfixed: true`) -> smoke test (`curl /internal/isalive`) -> ZAP baseline DAST scan (cached ZAP image, `-I` = warn only) -> GHCR login -> multi-arch build+push with `provenance: mode=max` and `sbom: true` (captures digest) -> cosign keyless signing of each tag by digest
+- `docker` job (runs on every push and PR, after `build` + `test` pass): QEMU -> Buildx -> meta -> build-for-scan (single-arch, `load: true`) -> Trivy image scan (CRITICAL/HIGH blocking, `ignore-unfixed: true`) -> smoke test (`curl /internal/isalive`) -> ZAP baseline DAST scan (cached ZAP image, `-I` = warn only). Push, cosign install, and cosign signing steps are gated on `startsWith(github.ref, 'refs/tags/')` so only `v*` tags publish. `provenance: false` + `sbom: false` on the publish step (buildkit attestations break the GHCR "OS / Arch" UI; cosign keyless signing provides supply-chain verification)
+- `ci-pass` job (aggregation gate, `if: always()`, `needs: [static-check, build, test, docker]`): single check suitable for branch protection
 - Docker images pushed to `ghcr.io` as multi-arch (`amd64` + `arm64`) with GHA build cache
 - Permissions: `contents: read` at workflow level; `packages: write` + `id-token: write` (cosign OIDC) on docker job only
 
@@ -115,7 +127,6 @@ Last reviewed: 2026-04-10
 - [x] ~~Evaluate husky alternatives — removed husky entirely (CI format-check is the safety net)~~
 - [x] ~~Switch off `nginxinc/nginx-unprivileged` because of upstream lag — migrated to official `nginx:1.29.8-alpine` with DIY UID 101 / `/tmp` PID file (2026-04-10)~~
 - [ ] **`eslint-plugin-react-hooks` peer dep warning** — currently 7.0.1, peer declares `eslint@^3..^9` but project pins eslint 10. Plugin works at runtime; warning is cosmetic. Track for next stable release that lists eslint 10 in peer deps.
-- [ ] **`.dockerignore` contains stale `.husky` reference** (line 5) — clean up after husky removal.
 - [ ] **Optional: enable Renovate `github-runners` manager** — would generate auto-PRs when GitHub deprecates `ubuntu-22.04` / `ubuntu-24.04` runner images. Currently disabled; `ubuntu-latest` rarely breaks but the warning window is short when it does.
 
 ## Skills

@@ -16,8 +16,8 @@ React 19 SPA built with [Vite 8](https://vite.dev) and TypeScript (strict mode).
 | Runtime          | Node.js 24.14 (pinned via `.nvmrc`)                         |
 | Package manager  | pnpm 10.33                                                  |
 | Container        | Official nginx 1.29-alpine, DIY unprivileged UID 101 (multi-arch amd64/arm64) |
-| CI/CD            | GitHub Actions + Trivy + Cosign keyless OIDC + SLSA provenance |
-| Code quality     | ESLint 10 + Prettier 3.8 + hadolint 2.14 + gitleaks 8.30     |
+| CI/CD            | GitHub Actions + Trivy + ZAP DAST + Cosign keyless OIDC         |
+| Code quality     | ESLint 10 + Prettier 3.8 + hadolint 2.14 + gitleaks 8.30 + Trivy 0.69 |
 | Dependency mgmt  | Renovate (platform automerge, branch strategy)              |
 
 ## Quick Start
@@ -44,78 +44,6 @@ Install all required dependencies:
 
 ```bash
 make deps
-```
-
-## Available Make Targets
-
-Run `make help` to see all available targets.
-
-### Build & Run
-
-| Target         | Description                                           |
-| -------------- | ----------------------------------------------------- |
-| `make install` | Install project dependencies via pnpm                 |
-| `make build`   | Type-check with tsc and build for production via Vite |
-| `make run`     | Start Vite dev server with HMR                        |
-| `make clean`   | Remove `node_modules/` and `dist/`                    |
-
-### Code Quality
-
-| Target              | Description                                                       |
-| ------------------- | ----------------------------------------------------------------- |
-| `make lint`         | Run ESLint and hadolint on source files                           |
-| `make test`         | Run Vitest tests                                                  |
-| `make coverage-check` | Run Vitest with coverage thresholds (CI gate, 80%)              |
-| `make vulncheck`    | Check for known vulnerabilities in dependencies (moderate+)       |
-| `make trivy-fs`     | Trivy filesystem scan (vuln, secret, misconfig)                   |
-| `make secrets`      | Scan repository for leaked secrets via gitleaks                   |
-| `make static-check` | Composite quality gate (format-check, lint, vulncheck, trivy-fs, secrets) |
-| `make format`       | Format source files with Prettier                                 |
-| `make format-check` | Check formatting without writing                                  |
-
-### CI
-
-| Target        | Description                                                                              |
-| ------------- | ---------------------------------------------------------------------------------------- |
-| `make ci`     | Run full local CI pipeline (install, static-check, coverage-check, build, deps-prune-check) |
-| `make ci-run`     | Run GitHub Actions workflow locally via [act](https://github.com/nektos/act) (push event) |
-| `make ci-run-tag` | Run CI with a tag event via act (exercises docker job + DAST gate)                        |
-
-### Docker
-
-| Target             | Description                                              |
-| ------------------ | -------------------------------------------------------- |
-| `make image-build` | Build Docker image                                       |
-| `make image-run`   | Run Docker container on port 8080                        |
-| `make image-stop`  | Stop Docker container                                    |
-| `make dast`        | ZAP baseline DAST scan against the built image (mirrors CI gate) |
-
-### Utilities
-
-| Target                   | Description                                                       |
-| ------------------------ | ----------------------------------------------------------------- |
-| `make help`              | List available tasks                                              |
-| `make deps`              | Install dependencies if not present (node, pnpm, docker, git)     |
-| `make deps-act`          | Install [act](https://github.com/nektos/act) for local CI runs    |
-| `make deps-hadolint`     | Install hadolint for Dockerfile linting                           |
-| `make deps-trivy`        | Install trivy for filesystem vulnerability scanning               |
-| `make deps-gitleaks`     | Install gitleaks for secret scanning                              |
-| `make deps-update`       | Update dependencies to latest compatible versions (`pnpm update`) |
-| `make deps-prune`        | Check for unused dependencies                                     |
-| `make deps-prune-check`  | Verify no prunable dependencies (CI gate)                         |
-| `make release`           | Create and push a new tag (interactive prompt for vX.Y.Z)         |
-| `make renovate`          | Run Renovate locally in dry-run mode (requires `GITHUB_TOKEN`)    |
-| `make renovate-validate` | Validate Renovate configuration                                   |
-
-Or use pnpm scripts directly:
-
-```bash
-pnpm dev              # Vite dev server
-pnpm build            # tsc + vite build
-pnpm test             # Vitest
-pnpm lint             # ESLint
-pnpm prettier         # Format src/**/*.{ts,tsx,js,jsx}
-pnpm prettier:diff    # Check formatting without writing
 ```
 
 ## Architecture
@@ -148,6 +76,82 @@ Nginx (`nginx/nginx.conf`):
 - Health endpoints: `/internal/isalive`, `/internal/isready`
 - Security headers: `server_tokens off`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`
 
+## Available Make Targets
+
+### Build & Run
+
+| Target         | Description                                           |
+| -------------- | ----------------------------------------------------- |
+| `make install` | Install project dependencies via pnpm                 |
+| `make build`   | Type-check with tsc and build for production via Vite |
+| `make run`     | Start Vite dev server with HMR                        |
+| `make clean`   | Remove `node_modules/`, `dist/`, `coverage/`, and `zap-output/` |
+
+### Testing
+
+| Target                | Description                                                                 |
+| --------------------- | --------------------------------------------------------------------------- |
+| `make test`           | Run Vitest unit tests (fast, jsdom)                                         |
+| `make coverage-check` | Run Vitest with coverage thresholds (CI gate, 80%)                          |
+| `make e2e`            | End-to-end tests against the built container (health, SPA fallback, headers) |
+| `make dast`           | ZAP baseline DAST scan against the built image (mirrors CI gate)            |
+
+### Code Quality
+
+| Target              | Description                                                       |
+| ------------------- | ----------------------------------------------------------------- |
+| `make lint`         | Run ESLint and hadolint on source files                           |
+| `make vulncheck`    | Check for known vulnerabilities in dependencies (moderate+)       |
+| `make trivy-fs`     | Trivy filesystem scan (vuln, secret, misconfig)                   |
+| `make secrets`      | Scan repository for leaked secrets via gitleaks                   |
+| `make static-check` | Composite quality gate (format-check, lint, vulncheck, trivy-fs, secrets) |
+| `make format`       | Format source files with Prettier                                 |
+| `make format-check` | Check formatting without writing                                  |
+
+### CI
+
+| Target        | Description                                                                              |
+| ------------- | ---------------------------------------------------------------------------------------- |
+| `make ci`     | Run full local CI pipeline (install, static-check, coverage-check, build, deps-prune-check) |
+| `make ci-run`     | Run GitHub Actions workflow locally via [act](https://github.com/nektos/act) (push event) |
+| `make ci-run-tag` | Run CI with a tag event via act (exercises docker job + DAST gate)                        |
+
+### Docker
+
+| Target             | Description                                              |
+| ------------------ | -------------------------------------------------------- |
+| `make image-build` | Build Docker image                                       |
+| `make image-run`   | Run Docker container on port 8080                        |
+| `make image-stop`  | Stop Docker container                                    |
+
+### Utilities
+
+| Target                   | Description                                                       |
+| ------------------------ | ----------------------------------------------------------------- |
+| `make help`              | List available tasks                                              |
+| `make deps`              | Install dependencies if not present (node, pnpm, docker, git)     |
+| `make deps-act`          | Install [act](https://github.com/nektos/act) for local CI runs    |
+| `make deps-hadolint`     | Install hadolint for Dockerfile linting                           |
+| `make deps-trivy`        | Install trivy for filesystem vulnerability scanning               |
+| `make deps-gitleaks`     | Install gitleaks for secret scanning                              |
+| `make deps-update`       | Update dependencies to latest compatible versions (`pnpm update`) |
+| `make deps-prune`        | Check for unused dependencies                                     |
+| `make deps-prune-check`  | Verify no prunable dependencies (CI gate)                         |
+| `make release`           | Create and push a new tag (interactive prompt for vX.Y.Z)         |
+| `make renovate`          | Run Renovate locally in dry-run mode (requires `GITHUB_TOKEN`)    |
+| `make renovate-validate` | Validate Renovate configuration                                   |
+
+Or use pnpm scripts directly:
+
+```bash
+pnpm dev              # Vite dev server
+pnpm build            # tsc + vite build
+pnpm test             # Vitest
+pnpm lint             # ESLint
+pnpm prettier         # Format src/**/*.{ts,tsx,js,jsx}
+pnpm prettier:diff    # Check formatting without writing
+```
+
 ## CI/CD
 
 GitHub Actions runs on every push to `main`, tags `v*`, pull requests, and `workflow_call` (reusable).
@@ -157,7 +161,9 @@ GitHub Actions runs on every push to `main`, tags `v*`, pull requests, and `work
 | **static-check** | push, PR, tags | Install, `make static-check` (format-check, lint, vulncheck, trivy-fs, secrets)                |
 | **build**        | push, PR, tags | Install, Build (after static-check)                                                            |
 | **test**         | push, PR, tags | Install, `make coverage-check` (Vitest + 80% thresholds, after static-check)                   |
-| **docker**       | `v*` tags only | Build-for-scan → Trivy → Smoke test → ZAP DAST → Multi-arch push → Cosign signing              |
+| **e2e**          | push, PR, tags | Build image, `make e2e` — curl-based tests against nginx (health, SPA fallback, security headers) |
+| **docker**       | push, PR, tags | Build-for-scan → Trivy → Smoke test → ZAP DAST → (on `v*` tags only) Multi-arch push → Cosign signing |
+| **ci-pass**      | all            | Aggregation gate (`if: always()`) — single required check for branch protection                 |
 
 A weekly [cleanup workflow](.github/workflows/cleanup-runs.yml) deletes workflow runs older than 7 days (keeping a minimum of 5).
 
@@ -173,10 +179,8 @@ The `docker` job runs the following gates **before** any image is pushed to GHCR
 | 2   | **Trivy image scan** (CRITICAL/HIGH) | CVEs in the nginx base image, OS packages, layers  | `aquasecurity/trivy-action` with `image-ref:`    |
 | 3   | **Smoke test**                       | Container boots and serves `/internal/isalive`     | `docker run` + `curl` health probe               |
 | 4   | **ZAP baseline DAST scan**           | Missing security headers, misconfigs, info leaks   | [OWASP ZAP](https://www.zaproxy.org/) baseline (cached image, `-I` = warn only) |
-| 5   | Multi-arch build + push              | Publishes for both `linux/amd64` and `linux/arm64` | `docker/build-push-action`                       |
-| 6   | **SLSA L2 build provenance**         | Cryptographic record of how the image was built    | `docker/build-push-action` native (`mode=max`)   |
-| 7   | **SBOM attestation**                 | Software Bill of Materials in the manifest         | `docker/build-push-action` native (`sbom: true`) |
-| 8   | **Cosign keyless OIDC signing**      | Sigstore signature on the manifest digest          | `sigstore/cosign-installer` + `cosign sign`      |
+| 5   | Multi-arch build + push              | Publishes for both `linux/amd64` and `linux/arm64` | `docker/build-push-action` (tag push only)       |
+| 6   | **Cosign keyless OIDC signing**      | Sigstore signature on the manifest digest          | `sigstore/cosign-installer` + `cosign sign`      |
 
 Verify a published image's signature with:
 
@@ -186,6 +190,6 @@ cosign verify ghcr.io/andriykalashnykov/viteapp:<tag> \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-> Note: GHCR's web UI may show cosmetic `unknown/unknown` rows alongside the platform manifests — those are the attestation manifests (provenance + SBOM). `docker pull` is unaffected.
+> Note: buildkit `provenance` / `sbom` attestations are disabled — they inject `unknown/unknown` entries into the OCI index that break the GHCR "OS / Arch" UI tab. Cosign keyless signing provides supply-chain verification.
 
 [Renovate](https://docs.renovatebot.com/) keeps dependencies up to date with platform automerge enabled.

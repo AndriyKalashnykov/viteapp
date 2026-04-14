@@ -174,6 +174,20 @@ image-stop:
 	@docker stop $(APP_NAME) 2>/dev/null || true
 	@docker rm -f viteapp-test 2>/dev/null || true
 
+#e2e: @ End-to-end tests against the built container (health, SPA fallback, security headers)
+e2e: image-build
+	@docker rm -f viteapp-test 2>/dev/null || true
+	@docker run -d --name=viteapp-test -p 8080:8080 $(APP_NAME):$(CURRENTTAG) >/dev/null
+	@echo "Waiting for nginx to become healthy..."
+	@end=$$(( $$(date +%s) + 30 )); \
+		while [ $$(date +%s) -lt $$end ]; do \
+			curl -fsS http://localhost:8080/internal/isalive >/dev/null 2>&1 && break; \
+			sleep 1; \
+		done
+	@./e2e/e2e-test.sh; EXIT=$$?; \
+		docker rm -f viteapp-test >/dev/null; \
+		exit $$EXIT
+
 #dast: @ ZAP baseline DAST scan against the built image (mirrors CI gate)
 dast: image-build
 	@docker rm -f viteapp-test 2>/dev/null || true
@@ -243,5 +257,5 @@ renovate-validate:
 .PHONY: help deps deps-act deps-hadolint deps-trivy deps-gitleaks clean \
 	install lint build test coverage-check vulncheck trivy-fs secrets \
 	static-check deps-update deps-prune deps-prune-check run format \
-	format-check ci image-build image-run image-stop dast release \
+	format-check ci image-build image-run image-stop e2e dast release \
 	ci-run ci-run-tag renovate renovate-validate

@@ -1,0 +1,2 @@
+10109	IGNORE	(Modern Web Application — informational; ZAP suggests AJAX spider for SPAs but we use baseline. Not a vulnerability — just notes the page is JS-heavy.)
+10049	IGNORE	(Storable/Non-Storable Content — rule fires either way. Tagged WSTG-v42-ATHN-06 which targets browser cache weakness in AUTHENTICATED context. This SPA serves public, unauthenticated static content; cache directives are a design choice, not a vuln.)

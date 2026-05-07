@@ -1,0 +1,15 @@
+# Portfolio version manager: mise (https://mise.jdx.dev).
+#
+# Sources of truth for this project:
+#   - Node:     .nvmrc (mise reads it natively)
+#   - pnpm:     package.json `packageManager` field (corepack reads it natively)
+#   - Binary tools below: this file (mise installs via aqua backend)
+#
+# Run `mise install` to install all aqua-backed tools.
+
+[tools]
+"aqua:nektos/act"                                = "0.2.88"
+"aqua:hadolint/hadolint"                         = "2.14.0"
+"aqua:aquasecurity/trivy"                        = "0.70.0"
+"aqua:gitleaks/gitleaks"                         = "8.30.1"
+"aqua:GoogleContainerTools/container-structure-test" = "1.22.1"

@@ -3,31 +3,25 @@
 APP_NAME   := viteapp
 CURRENTTAG := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 
-# === Tool Versions (pinned) ===
-# Local dev uses mise (https://mise.jdx.dev) — the portfolio-wide version
-# manager. It reads .nvmrc natively, so NODE_VERSION stays derived from the
-# single source of truth. CI uses actions/setup-node with node-version-file.
-# NODE_VERSION cannot be tracked by Renovate (.nvmrc is the trackable input).
-NODE_VERSION     := $(shell cat .nvmrc 2>/dev/null || echo 24)
-# renovate: datasource=npm depName=pnpm
-PNPM_VERSION     := 10.33.0
-# renovate: datasource=github-releases depName=nektos/act extractVersion=^v(?<version>.*)$
-ACT_VERSION      := 0.2.87
-# renovate: datasource=github-releases depName=hadolint/hadolint extractVersion=^v(?<version>.*)$
-HADOLINT_VERSION := 2.14.0
-# renovate: datasource=github-releases depName=aquasecurity/trivy extractVersion=^v(?<version>.*)$
-TRIVY_VERSION    := 0.69.3
-# renovate: datasource=github-releases depName=zricethezav/gitleaks extractVersion=^v(?<version>.*)$
-GITLEAKS_VERSION := 8.30.1
+# === Sources of truth ===
+# Node:     .nvmrc (mise reads it natively)
+# pnpm:     package.json `packageManager` field (corepack reads it natively)
+# Binary tools (act, hadolint, trivy, gitleaks): .mise.toml (aqua backend)
+# Docker images below: pinned here with `# renovate:` annotations.
+NODE_VERSION := $(shell cat .nvmrc 2>/dev/null || echo 24)
 # renovate: datasource=github-releases depName=zaproxy/zaproxy extractVersion=^v(?<version>.*)$
-ZAP_VERSION      := 2.17.0
+ZAP_VERSION         := 2.17.0
 # renovate: datasource=docker depName=minlag/mermaid-cli
-MERMAID_CLI_VERSION := 11.12.0
+MERMAID_CLI_VERSION := 11.14.0
+# renovate: datasource=npm depName=renovate
+RENOVATE_VERSION    := 43.150.0
+# renovate: datasource=npm depName=depcheck
+DEPCHECK_VERSION    := 1.4.7
 
-# Ensure tools installed to ~/.local/bin (hadolint, act) are on PATH for all
-# recipes — needed inside the act runner container where this path is not
-# preconfigured. Exported so every sub-shell the recipes spawn inherits it.
-export PATH := $(HOME)/.local/bin:$(PATH)
+# Ensure tools installed by mise (~/.local/share/mise/shims) and ~/.local/bin
+# (corepack-managed pnpm) are on PATH for every recipe — needed inside the act
+# runner container where these paths are not preconfigured.
+export PATH := $(HOME)/.local/share/mise/shims:$(HOME)/.local/bin:$(PATH)
 
 # CI-safe pnpm install: uses --frozen-lockfile when CI=true (set by GitHub Actions)
 PNPM_INSTALL := pnpm install $(if $(CI),--frozen-lockfile,)
@@ -38,63 +32,32 @@ help:
 	@echo "Commands:"
 	@grep -E '[a-zA-Z\.\-]+:.*?@ .*$$' $(MAKEFILE_LIST)| tr -d '#' | awk 'BEGIN {FS = ":.*?@ "}; {printf "\033[32m%-30s\033[0m - %s\n", $$1, $$2}'
 
-#deps: @ Install dependencies if not present (node via mise, pnpm, docker, git)
+#deps: @ Install dev tooling (mise + Node + pnpm + binary tools from .mise.toml)
 deps:
 	@# Local dev: bootstrap mise if missing (installs to ~/.local/bin, no sudo).
-	@# CI uses actions/setup-node, so skip via CI guard.
-	@if [ -z "$$CI" ] && ! command -v mise >/dev/null 2>&1 && ! command -v node >/dev/null 2>&1; then \
+	@# CI uses actions/setup-node + native runners, so skip via CI guard.
+	@if [ -z "$$CI" ] && ! command -v mise >/dev/null 2>&1; then \
 		echo "Installing mise (portfolio-wide version manager, no root required)..."; \
 		curl -fsSL https://mise.run | sh; \
 		echo "mise installed at ~/.local/bin/mise. Activate in your shell:"; \
 		echo '  bash: echo '"'"'eval "$$(~/.local/bin/mise activate bash)"'"'"' >> ~/.bashrc'; \
 		echo '  zsh:  echo '"'"'eval "$$(~/.local/bin/mise activate zsh)"'"'"'  >> ~/.zshrc'; \
-		echo "Then re-run 'make deps' to install Node $(NODE_VERSION) from .nvmrc."; \
+		echo "Then re-run 'make deps' to install the rest of the toolchain."; \
 		exit 0; \
 	fi
-	@# mise reads .nvmrc natively and installs the pinned Node version.
-	@if [ -z "$$CI" ] && command -v mise >/dev/null 2>&1 && ! command -v node >/dev/null 2>&1; then \
-		echo "Installing Node $(NODE_VERSION) via mise (reads .nvmrc)..."; \
-		mise install; \
+	@# mise install reads .mise.toml + .nvmrc and installs every pinned tool
+	@# (Node from .nvmrc, plus act / hadolint / trivy / gitleaks via aqua).
+	@if [ -z "$$CI" ] && command -v mise >/dev/null 2>&1; then \
+		mise install --yes; \
 	fi
 	@command -v node >/dev/null 2>&1 || { echo "Error: node not found. Install mise (https://mise.run) or Node $(NODE_VERSION) manually."; exit 1; }
-	@command -v pnpm >/dev/null 2>&1 || { echo "Installing pnpm $(PNPM_VERSION) via corepack..."; \
+	@command -v pnpm >/dev/null 2>&1 || { \
 		command -v corepack >/dev/null 2>&1 || { echo "Error: corepack not found; upgrade Node to >=16.10"; exit 1; }; \
-		corepack enable && corepack prepare pnpm@$(PNPM_VERSION) --activate; \
+		echo "Activating pnpm via corepack (version pin lives in package.json)..."; \
+		corepack enable pnpm; \
 	}
 	@command -v docker >/dev/null 2>&1 || echo "WARNING: docker is not installed (needed for 'make image-build'). Install from https://docs.docker.com/get-docker/"
 	@command -v git >/dev/null 2>&1 || echo "WARNING: git is not installed (needed for 'make release'). Install from https://git-scm.com/downloads"
-
-#deps-act: @ Install act for local CI runs
-deps-act: deps
-	@command -v act >/dev/null 2>&1 || { echo "Installing act $(ACT_VERSION)..."; \
-		mkdir -p $$HOME/.local/bin; \
-		curl -sSfL https://raw.githubusercontent.com/nektos/act/master/install.sh | bash -s -- -b $$HOME/.local/bin v$(ACT_VERSION); \
-	}
-
-#deps-hadolint: @ Install hadolint for Dockerfile linting
-deps-hadolint:
-	@command -v hadolint >/dev/null 2>&1 || { echo "Installing hadolint $(HADOLINT_VERSION)..."; \
-		mkdir -p $$HOME/.local/bin; \
-		curl -sSfL -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/download/v$(HADOLINT_VERSION)/hadolint-Linux-x86_64 && \
-		install -m 755 /tmp/hadolint $$HOME/.local/bin/hadolint && \
-		rm -f /tmp/hadolint; \
-	}
-
-#deps-trivy: @ Install trivy for filesystem vulnerability scanning
-deps-trivy:
-	@command -v trivy >/dev/null 2>&1 || { echo "Installing trivy $(TRIVY_VERSION)..."; \
-		mkdir -p $$HOME/.local/bin; \
-		curl -sSfL https://github.com/aquasecurity/trivy/releases/download/v$(TRIVY_VERSION)/trivy_$(TRIVY_VERSION)_Linux-64bit.tar.gz | \
-			tar -xz -C $$HOME/.local/bin trivy; \
-	}
-
-#deps-gitleaks: @ Install gitleaks for secret scanning
-deps-gitleaks:
-	@command -v gitleaks >/dev/null 2>&1 || { echo "Installing gitleaks $(GITLEAKS_VERSION)..."; \
-		mkdir -p $$HOME/.local/bin; \
-		curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v$(GITLEAKS_VERSION)/gitleaks_$(GITLEAKS_VERSION)_linux_x64.tar.gz | \
-			tar -xz -C $$HOME/.local/bin gitleaks; \
-	}
 
 #clean: @ Remove node_modules/, dist/, coverage/, and zap-output/
 clean:
@@ -104,10 +67,14 @@ clean:
 install: deps
 	@$(PNPM_INSTALL)
 
-#lint: @ Run ESLint and hadolint on source files
-lint: install deps-hadolint
+#lint: @ Run ESLint, hadolint, and shell-script executable-bit guard
+lint: install
 	@pnpm lint
 	@hadolint Dockerfile
+	@# Guard against subagent-created scripts landing without +x bit
+	@# (Write tool defaults to 0644). Real incident: kind-cluster 2026-04-17.
+	@find scripts -type f -name '*.sh' -not -executable -print -exec false {} + 2>/dev/null \
+		|| { echo "Error: shell scripts above are missing executable bit. Run: chmod +x <file>"; exit 1; }
 
 #build: @ Type-check with tsc and build for production via Vite
 build: install
@@ -126,29 +93,16 @@ vulncheck: install
 	@pnpm audit --audit-level=moderate
 
 #trivy-fs: @ Trivy filesystem scan (vuln, secret, misconfig)
-trivy-fs: deps-trivy
+trivy-fs: deps
 	@trivy fs --scanners vuln,secret,misconfig --severity CRITICAL,HIGH --exit-code 1 --ignore-unfixed .
 
 #secrets: @ Scan repository for leaked secrets via gitleaks
-secrets: deps-gitleaks
+secrets: deps
 	@gitleaks detect --source . --verbose --redact --no-banner
 
 #mermaid-lint: @ Parse every ```mermaid fenced block in README.md / CLAUDE.md via pinned mermaid-cli
 mermaid-lint:
-	@bash -eu -c '\
-		files=$$(grep -lF "\`\`\`mermaid" README.md CLAUDE.md 2>/dev/null || true); \
-		if [ -z "$$files" ]; then echo "mermaid-lint: no mermaid blocks found"; exit 0; fi; \
-		tmp=$$(mktemp -d); trap "rm -rf $$tmp" EXIT; \
-		i=0; for f in $$files; do \
-			awk -v dir="$$tmp" "/^\`\`\`mermaid\$$/ { inblk=1; idx++; out=sprintf(\"%s/%d.mmd\", dir, idx); next } /^\`\`\`\$$/ { if (inblk) { close(out); inblk=0 } next } inblk { print > out }" "$$f"; \
-		done; \
-		for mmd in $$tmp/*.mmd; do \
-			[ -f "$$mmd" ] || continue; \
-			echo "mermaid-lint: parsing $$mmd"; \
-			docker run --rm -u $$(id -u):$$(id -g) -v "$$tmp":/data minlag/mermaid-cli:$(MERMAID_CLI_VERSION) \
-				-i "/data/$$(basename $$mmd)" -o "/data/$$(basename $$mmd .mmd).svg" >/dev/null; \
-		done; \
-		echo "mermaid-lint passed."'
+	@./scripts/mermaid-lint.sh $(MERMAID_CLI_VERSION)
 
 #static-check: @ Composite quality gate (format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)
 static-check: format-check lint vulncheck trivy-fs secrets mermaid-lint
@@ -161,12 +115,12 @@ deps-update: install
 #deps-prune: @ Check for unused dependencies
 deps-prune: install
 	@echo "=== Dependency Pruning ==="
-	@npx --yes depcheck --ignores="@types/*" 2>/dev/null || true
+	@npx --yes depcheck@$(DEPCHECK_VERSION) --ignores="@types/*" 2>/dev/null || true
 	@echo "=== Pruning complete ==="
 
 #deps-prune-check: @ Verify no prunable dependencies (CI gate)
 deps-prune-check: install
-	@npx --yes depcheck --ignores="@types/*"
+	@npx --yes depcheck@$(DEPCHECK_VERSION) --ignores="@types/*"
 
 #run: @ Start Vite dev server with HMR
 run: install
@@ -192,10 +146,13 @@ image-build: build
 image-run: image-stop
 	@docker run --rm -p 8080:8080 --name $(APP_NAME) $(APP_NAME):$(CURRENTTAG)
 
-#image-stop: @ Stop Docker container
+#image-stop: @ Stop the production Docker container (test container is owned by e2e/dast targets)
 image-stop:
 	@docker stop $(APP_NAME) 2>/dev/null || true
-	@docker rm -f viteapp-test 2>/dev/null || true
+
+#image-cst: @ Container-structure-test against the built image (USER, EXPOSE, file presence)
+image-cst: image-build deps
+	@container-structure-test test --image $(APP_NAME):$(CURRENTTAG) --config container-structure-test.yaml
 
 #e2e: @ End-to-end tests against the built container (health, SPA fallback, security headers)
 e2e: image-build
@@ -211,7 +168,7 @@ e2e: image-build
 		docker rm -f viteapp-test >/dev/null; \
 		exit $$EXIT
 
-#dast: @ ZAP baseline DAST scan against the built image (mirrors CI gate)
+#dast: @ ZAP baseline DAST scan against the built image (mirrors CI gate, fail-on-warn)
 dast: image-build
 	@docker rm -f viteapp-test 2>/dev/null || true
 	@docker run -d --name=viteapp-test -p 8080:8080 $(APP_NAME):$(CURRENTTAG) >/dev/null
@@ -222,19 +179,19 @@ dast: image-build
 			sleep 1; \
 		done
 	@mkdir -p zap-output && chmod 777 zap-output
+	@echo "DAST report will be written to: $(PWD)/zap-output/zap-report.html"
 	@docker run --rm --network host \
 		-v "$(PWD)/zap-output:/zap/wrk:rw" \
+		-v "$(PWD)/.zap/baseline-rules.tsv:/zap/wrk/baseline-rules.tsv:ro" \
 		ghcr.io/zaproxy/zaproxy:$(ZAP_VERSION) \
 		zap-baseline.py \
 			-t http://localhost:8080 \
-			-I \
+			-c baseline-rules.tsv \
 			-r zap-report.html \
 			-J zap-report.json \
-			-w zap-report.md \
-		|| EXIT=$$?; \
+			-w zap-report.md; EXIT=$$?; \
 		docker rm -f viteapp-test >/dev/null; \
 		exit $${EXIT:-0}
-	@echo "DAST report: $(PWD)/zap-output/zap-report.html"
 
 #release: @ Create and push a new tag (interactive prompt for vX.Y.Z)
 release:
@@ -246,21 +203,27 @@ release:
 		echo "Done."'
 
 #ci-run: @ Run GitHub Actions workflow locally using act (simulates push to main)
-ci-run: deps-act
+# Use bash-array `--secret KEY` env-only form when secrets are eventually
+# needed — never `--secret KEY=$$VAR` (value would land in `ps -ef` argv).
+ci-run: deps
 	@docker container prune -f 2>/dev/null || true
 	@act push --container-architecture linux/amd64 --artifact-server-path /tmp/act-artifacts
 
 #ci-run-tag: @ Run GitHub Actions workflow locally with a tag event (exercises docker job + DAST)
-ci-run-tag: deps-act
+ci-run-tag: deps
 	@docker container prune -f 2>/dev/null || true
 	@TAG="$$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)"; \
 		echo '{"ref":"refs/tags/'"$$TAG"'","ref_type":"tag","repository":{"full_name":"andriykalashnykov/viteapp","name":"viteapp","owner":{"login":"andriykalashnykov"}}}' > /tmp/act-tag-event.json
 	@echo "Simulating tag push event from /tmp/act-tag-event.json"
+	@# cosign signing is the only step that legitimately fails under act (no
+	@# OIDC issuer locally). The act-runner exits 0 by ignoring exit code 137
+	@# from sigstore/cosign-installer's keyless-OIDC mint step; every other
+	@# job/step failure still propagates. Do NOT add a blanket `|| true`.
 	@act push \
 		--eventpath /tmp/act-tag-event.json \
 		--container-architecture linux/amd64 \
-		--artifact-server-path /tmp/act-artifacts || true
-	@echo "Note: cosign signing will fail under act because OIDC tokens are not available locally — expected."
+		--artifact-server-path /tmp/act-artifacts \
+		--env ACT_FAIL_ON_NO_JOBS=false
 
 #renovate: @ Run Renovate locally in dry-run mode (requires GITHUB_TOKEN)
 # Token is passed via env var (RENOVATE_TOKEN) so it never appears in the
@@ -271,14 +234,13 @@ renovate: install
 		echo "Error: GITHUB_TOKEN env var not set"; exit 1; \
 	fi
 	@RENOVATE_TOKEN="$$GITHUB_TOKEN" LOG_LEVEL=debug \
-		npx --yes renovate --dry-run=full --platform=local --repository-cache=reset
+		npx --yes renovate@$(RENOVATE_VERSION) --dry-run=full --platform=local --repository-cache=reset
 
 #renovate-validate: @ Validate Renovate configuration
 renovate-validate:
-	@npx --yes --package renovate -- renovate-config-validator --strict renovate.json
+	@npx --yes --package renovate@$(RENOVATE_VERSION) -- renovate-config-validator --strict renovate.json
 
-.PHONY: help deps deps-act deps-hadolint deps-trivy deps-gitleaks clean \
-	install lint build test coverage-check vulncheck trivy-fs secrets \
-	static-check deps-update deps-prune deps-prune-check run format \
-	format-check ci image-build image-run image-stop e2e dast release \
-	ci-run ci-run-tag renovate renovate-validate mermaid-lint
+.PHONY: help deps clean install lint build test coverage-check vulncheck \
+	trivy-fs secrets static-check deps-update deps-prune deps-prune-check \
+	run format format-check ci image-build image-run image-stop image-cst \
+	e2e dast release ci-run ci-run-tag renovate renovate-validate mermaid-lint

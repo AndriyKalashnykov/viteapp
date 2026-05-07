@@ -4,35 +4,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Development Commands
 
-**Version manager:** mise (portfolio-wide; reads `.nvmrc` natively, auto-installed by `make deps`)
-**Package manager:** pnpm (via corepack)
+**Version manager:** mise (portfolio-wide; reads `.nvmrc` natively + binary tools pinned in `.mise.toml`, auto-installed by `make deps`)
+**Package manager:** pnpm (via corepack; version pinned in `package.json` `packageManager`)
 
 ```bash
-make deps              # Install system dependencies (node, pnpm, docker, git) if missing
+make deps              # Install mise + Node + pnpm + binary tools (act, hadolint, trivy, gitleaks, container-structure-test) from .mise.toml
 make install           # pnpm install (runs deps first)
-make lint              # ESLint + hadolint (Dockerfile linting)
+make lint              # ESLint + hadolint + shell-script executable-bit guard
 make build             # TypeScript check + Vite production build (runs install first)
 make test              # Run Vitest tests
-make coverage-check    # Run Vitest with coverage thresholds (CI gate)
+make coverage-check    # Run Vitest with coverage thresholds (CI gate, 80%)
 make run               # Start Vite dev server with HMR
 make format            # Format source files with Prettier
 make format-check      # Check formatting without writing
 make vulncheck         # Check for known vulnerabilities in dependencies (moderate+)
 make trivy-fs          # Trivy filesystem scan (vuln, secret, misconfig)
 make secrets           # Scan repository for leaked secrets via gitleaks
-make static-check      # Composite quality gate (format-check, lint, vulncheck, trivy-fs, secrets)
-make ci                # Full local CI pipeline (install, static-check, test, coverage-check, build, deps-prune-check)
-make ci-run            # Run GitHub Actions workflow locally using act
-make clean             # Remove node_modules/ and dist/
-make image-build       # Build Docker image (nginx-unprivileged)
+make mermaid-lint      # Parse every ```mermaid block in README.md / CLAUDE.md via pinned mermaid-cli (script: scripts/mermaid-lint.sh)
+make static-check      # Composite quality gate (format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)
+make ci                # Full local CI pipeline (install, static-check, coverage-check, build, deps-prune-check)
+make ci-run            # Run GitHub Actions workflow locally using act (push event)
+make ci-run-tag        # Run CI with a tag event via act (exercises docker job + DAST gate)
+make clean             # Remove node_modules/, dist/, coverage/, zap-output/
+make image-build       # Build Docker image
 make image-run         # Run Docker container on port 8080
-make image-stop        # Stop Docker container
-make e2e               # E2E tests against the built container (health, SPA fallback, security headers)
+make image-stop        # Stop the production Docker container
+make image-cst         # Container-structure-test against the built image (USER 101, EXPOSE 8080, file presence, nginx -t)
+make e2e               # E2E tests against the built container (health, SPA fallback, security headers, hashed bundle, 404 fallback)
+make dast              # ZAP baseline DAST scan against the built image (fail-on-warn; .zap/baseline-rules.tsv ignores informational 10049/10109)
 make release           # Create and push a new tag (interactive prompt for vX.Y.Z)
-make deps-act          # Install act for local CI runs
-make deps-hadolint     # Install hadolint for Dockerfile linting
-make deps-trivy        # Install trivy for filesystem vulnerability scanning
-make deps-gitleaks     # Install gitleaks for secret scanning
 make deps-update       # Update dependencies to latest compatible versions (pnpm update)
 make deps-prune        # Check for unused dependencies
 make deps-prune-check  # Verify no prunable dependencies (CI gate)
@@ -56,9 +56,9 @@ Test runner: `pnpm test` runs Vitest (`vitest run`). Test setup in `src/test/set
 
 | Layer | Target | Scope | Typical runtime |
 |-------|--------|-------|-----------------|
-| Unit | `make test` / `make coverage-check` | React components via jsdom; 80% coverage gate | seconds |
-| E2E | `make e2e` | Built container through nginx: `/internal/isalive`, `/internal/isready`, SPA fallback, security headers | ~15s (image build + 11 curl assertions) |
-| DAST | `make dast` / CI `docker` job | ZAP baseline scan against the running container | minutes |
+| Unit | `make test` / `make coverage-check` | React components + ThemeContext via jsdom; 80% coverage gate | seconds |
+| E2E | `make e2e` | Built container through nginx: health endpoints, SPA fallback, security headers (incl. CSP/COEP/COOP/CORP), hashed bundle URL, 404 fallback | ~15s (image build + 43 curl assertions) |
+| DAST | `make dast` | ZAP baseline scan against the running container (fail-on-warn) | minutes |
 
 No integration layer — the app is a static SPA with no DB/broker/inter-service calls. `make e2e` is the first layer that exercises the full nginx surface.
 
@@ -66,10 +66,15 @@ No integration layer — the app is a static SPA with no DB/broker/inter-service
 
 React 19 SPA built with Vite 8 and TypeScript (strict mode).
 
-- **Entry:** `index.html` -> `src/main.tsx` (defines ThemeContext inline, wraps App) -> `src/App.tsx`
-- **State:** React Context API (ThemeContext for light/dark theme, defined in `src/main.tsx`), standard hooks
+- **Entry:** `index.html` -> `src/main.tsx` -> `src/App.tsx`
+- **State:** React Context API (`ThemeContext` for light/dark theme, defined in `src/theme.tsx`), standard hooks
 - **Path alias:** `@` -> `src/` (configured in `vite.config.ts` and `tsconfig.json`)
 - **Performance:** Web Vitals via `src/reportWebVitals.ts` (called with `console.log` in `src/main.tsx`; all `console.*` calls stripped in production by terser `drop_console`)
+
+### Notable design decisions
+
+- **Playwright deferred** — current curl-based e2e covers nginx surface and hashed bundle; adding a Playwright smoke against the built bundle would catch Rolldown/terser/chunking regressions jsdom cannot see. Low priority; counter logic is already unit-tested.
+- **No CSP `'unsafe-inline'`** — production code uses className-only styling so `script-src 'self'; style-src 'self'` (no `unsafe-inline`) is enforceable. `src/demo/hooks.tsx` references inline styles but is dead code (not imported by `main.tsx`/`App.tsx`); Vite tree-shakes it from the bundle.
 
 ## Build & Bundle Config
 
@@ -84,27 +89,32 @@ Vite config (`vite.config.ts`):
 
 ## Docker & Deployment
 
-Multi-stage build: Node 24 Alpine builder -> official `nginx:1.29-alpine` server with a DIY unprivileged-user setup (runs as UID 101, PID file in `/tmp`, `apk upgrade --no-cache` for Alpine CVE patches). We previously used `nginxinc/nginx-unprivileged` but switched to the official image because the unprivileged variant lagged the official rebuild cadence by multiple patch releases.
+Multi-stage build: Node 24 Alpine builder -> official `nginx:1.29.8-alpine` server with a DIY unprivileged-user setup (runs as UID 101, PID file in `/tmp`, `apk upgrade --no-cache` for Alpine CVE patches). The official image is tracked directly because the `nginxinc/nginx-unprivileged` variant lagged the official rebuild cadence by multiple patch releases.
 
 Nginx (`nginx/nginx.conf`):
 
-- Listens on port 8080
+- Listens on port 8080 as numeric UID 101 (non-root)
 - SPA fallback: `try_files $uri /index.html`
 - Health endpoints: `/internal/isalive`, `/internal/isready`
-- Security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`
+- Security headers: `server_tokens off`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Content-Security-Policy`, `Cross-Origin-Embedder-Policy`, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`
+- Cache control: hashed `/assets/*` get `public, max-age=31536000, immutable`; `/` and SPA fallback get `no-cache, no-store, must-revalidate`; health endpoints get `no-store`
+- Headers re-declared in every `location` block — nginx silently shadows ALL parent `add_header` directives once a location defines its own. The e2e suite asserts header inheritance on `/`, SPA fallback, and both health endpoints.
 
 ## CI/CD
 
 GitHub Actions (`.github/workflows/ci.yml`):
 
-- Triggers: push to `main`, tags `v*`, pull requests, `workflow_call` (reusable)
-- `static-check` job: checkout (`fetch-depth: 0` for gitleaks history) -> pnpm/action-setup -> setup-node (with pnpm cache) -> install -> `make static-check` (format-check + lint + vulncheck + trivy-fs + secrets, composite quality gate)
+- Triggers: push to `main`, tags `v*`, pull requests, `workflow_call` (reusable). No trigger-level `paths-ignore` — uses a `changes` detector job (`dorny/paths-filter`) so doc-only changes skip heavy work without deadlocking Repository Rulesets that require `ci-pass`.
+- `changes` job: emits `outputs.code` (true on tag push or any non-doc file change). All heavy jobs gate on `if: needs.changes.outputs.code == 'true'`.
+- `static-check` job: checkout (`fetch-depth: 0` for gitleaks history) -> pnpm/action-setup -> setup-node (with pnpm cache) -> install -> `make static-check` (format-check + lint + vulncheck + trivy-fs + secrets + mermaid-lint, composite quality gate)
 - `build` job: install -> `make build` (runs after `static-check`)
 - `test` job: install -> `make coverage-check` (runs after `static-check`, parallel with `build`)
-- `docker` job (runs on every push and PR, after `build` + `test` pass): QEMU -> Buildx -> meta -> build-for-scan (single-arch, `load: true`) -> Trivy image scan (CRITICAL/HIGH blocking, `ignore-unfixed: true`) -> smoke test (`curl /internal/isalive`) -> ZAP baseline DAST scan (cached ZAP image, `-I` = warn only). Push, cosign install, and cosign signing steps are gated on `startsWith(github.ref, 'refs/tags/')` so only `v*` tags publish. `provenance: false` + `sbom: false` on the publish step (buildkit attestations break the GHCR "OS / Arch" UI; cosign keyless signing provides supply-chain verification)
-- `ci-pass` job (aggregation gate, `if: always()`, `needs: [static-check, build, test, docker]`): single check suitable for branch protection
-- Docker images pushed to `ghcr.io` as multi-arch (`amd64` + `arm64`) with GHA build cache
-- Permissions: `contents: read` at workflow level; `packages: write` + `id-token: write` (cosign OIDC) on docker job only
+- `e2e` job: install -> `make e2e` (curl-based assertions against built nginx container)
+- `docker` job: QEMU -> Buildx -> meta -> build-for-scan (single-arch, `load: true`) -> Trivy image scan (CRITICAL/HIGH blocking, `ignore-unfixed: true`) -> container-structure-test -> smoke test (`curl /internal/isalive`) -> multi-arch build (runs every push so arm64 cross-compile regressions surface pre-tag) -> tag-gated push + cosign keyless OIDC signing. `provenance: false` + `sbom: false` on the publish step (buildkit attestations break the GHCR "OS / Arch" UI; cosign keyless signing provides supply-chain verification).
+- `dast` job (parallel with `docker`): build single-arch image -> start -> ZAP baseline (fail-on-warn; `.zap/baseline-rules.tsv` IGNOREs ZAP rules 10049 (cache-storability informational) and 10109 (Modern Web Application informational) with rationale) -> upload report. **Job is skipped under act** (`if: ${{ vars.ACT != 'true' }}`) because ZAP requires Docker-in-Docker and `actions/upload-artifact@v7` fails under act's v4-protocol artifact server — `make ci-run` does NOT exercise this job. Failure modes that can slip through `make ci-run` and only surface on real GitHub Actions: ZAP rule additions/removals (run `make dast` locally before push), nginx response-header regressions that ZAP catches but e2e doesn't, and any `actions/upload-artifact@v7+` migration breakage. Mitigation: every nginx.conf edit MUST be followed by `make dast` locally before push.
+- `ci-pass` job (aggregation gate, `if: always()`, `needs: [changes, static-check, build, test, e2e, docker, dast]`): single check suitable for branch protection.
+- Docker images pushed to `ghcr.io` as multi-arch (`amd64` + `arm64`) with GHA build cache.
+- Permissions: `contents: read` at workflow level; `packages: write` + `id-token: write` (cosign OIDC) on docker job only; `pull-requests: read` on changes job.
 
 Cleanup (`.github/workflows/cleanup-runs.yml`):
 
@@ -114,26 +124,26 @@ Cleanup (`.github/workflows/cleanup-runs.yml`):
 ## Code Quality
 
 - **ESLint:** flat config (`eslint.config.js`) with `typescript-eslint`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`; `--max-warnings 0` enforced
-- **hadolint:** Dockerfile linting via `make lint` (auto-installed by `deps-hadolint` target)
+- **hadolint:** Dockerfile linting via `make lint` (auto-installed by mise from `.mise.toml`)
 - **Trivy:** filesystem scanner (`make trivy-fs`); part of `make static-check` composite gate
 - **gitleaks:** secret scanner (`make secrets`); part of `make static-check` composite gate
-- **Renovate:** auto-merges all dependency updates after CI passes (no restrictive schedule, ASAP merging)
+- **container-structure-test:** asserts USER 101, EXPOSE 8080, PID-file relocation, nginx config presence + syntax (`make image-cst`); CI `docker` job runs it before publish
+- **ZAP baseline DAST:** fail-on-warn; informational rules ignored via `.zap/baseline-rules.tsv` with documented rationale
+- **Renovate:** auto-merges all dependency updates after CI passes (no restrictive schedule, ASAP merging); `automergeType: branch` (works because `main` is unprotected — flip to `pr` if branch protection is added)
 - **Prettier:** uses defaults (no config file)
 - **Vitest:** unit tests with `@testing-library/react` and `jest-dom` matchers; coverage via `@vitest/coverage-v8` with thresholds; config in `vite.config.ts`; setup in `src/test/setup.ts`
-- **Mermaid lint:** every `` ```mermaid `` block in README.md / CLAUDE.md is parsed by pinned `minlag/mermaid-cli` (`make mermaid-lint`); part of `make static-check` composite gate
+- **Mermaid lint:** every `` ```mermaid `` block in README.md / CLAUDE.md is parsed by pinned `minlag/mermaid-cli` (`make mermaid-lint`, script at `scripts/mermaid-lint.sh`); part of `make static-check` composite gate
+- **Shell-script executable-bit guard:** `make lint` runs `find scripts -name '*.sh' -not -executable` so subagent-created scripts (Write tool defaults to mode 0644) don't ship with the executable bit missing.
 
 ## Upgrade Backlog
 
-Last reviewed: 2026-04-14
+Last reviewed: 2026-05-07 (`/upgrade-analysis`)
 
-- [x] ~~Evaluate husky alternatives — removed husky entirely (CI format-check is the safety net)~~
-- [x] ~~Switch off `nginxinc/nginx-unprivileged` because of upstream lag — migrated to official `nginx:1.29.8-alpine` with DIY UID 101 / `/tmp` PID file (2026-04-10)~~
-- [ ] **`eslint-plugin-react-hooks` peer dep warning** — currently 7.0.1, peer declares `eslint@^3..^9` but project pins eslint 10. Plugin works at runtime; warning is cosmetic. Track for next stable release that lists eslint 10 in peer deps.
-- [ ] **Optional: enable Renovate `github-runners` manager** — would generate auto-PRs when GitHub deprecates `ubuntu-22.04` / `ubuntu-24.04` runner images. Currently disabled; `ubuntu-latest` rarely breaks but the warning window is short when it does.
-- [ ] **CSP / COEP headers on nginx** — ZAP baseline reports WARN-NEW for missing `Content-Security-Policy` (10038) and `Cross-Origin-Embedder-Policy` (90004). Currently warn-only (`-I` flag). Adding a CSP tuned for the SPA bundle hashes would harden the response and clear the DAST warnings.
-- [ ] **Tighten ZAP baseline to non-warn mode** — once CSP/COEP headers are added, drop the `-I` flag so new DAST regressions fail CI rather than warn.
-- [ ] **nginx 1.29.8 → 1.30.0 minor bump** — upstream released 1.30.0; Renovate will PR. Watch for the 1.29.x → 1.30 minor changelog.
-- [ ] **Playwright browser-level e2e (optional)** — current curl-based e2e covers nginx surface; adding a Playwright smoke against the built bundle would catch Rolldown/terser/chunking regressions jsdom cannot see. Low priority; counter logic is already unit-tested.
+- [x] ~~`eslint-plugin-react-hooks` peer dep warning — 7.1.1 now lists `eslint ^10.0.0` in peerDependencies, retiring the workaround.~~ **Resolvable now via patch bump 7.0.1 → 7.1.1 (Wave 1).**
+- [ ] **nginx 1.29.8 → 1.30.x-alpine** — 1.30 GA available on Docker Hub. Drop-in once verified in a build. Re-check CSP/Cache-Control headers (server-level `add_header` semantics are stable across 1.29→1.30 but worth a single `make e2e + make dast` after the bump).
+- [ ] **postcss override (`pnpm.overrides`)** — `postcss@<8.5.10` is overridden to `>=8.5.10` to clear GHSA-qx2v-qp2m-jg93 (vite still pulls postcss transitively at the older version). Re-evaluate when vite ships a release that pins postcss directly.
+- [ ] **pnpm v10 → v11** — currently 10.33.0; pnpm v11 is in RC (per `pnpm/action-setup` v6 release notes). Monitor for GA before bumping `package.json` `packageManager` and `.mise.toml`.
+- [ ] **Renovate npx pin 41 → 43** — `make renovate` / `make renovate-validate` invoke `npx renovate@$(RENOVATE_VERSION)`. Renovate 42/43 breaking changes (timestamp-required `minimumReleaseAge`, Gradle-wrapper unsafe execution) verified inert for this project. Drop-in (Wave 2).
 
 ## Skills
 
@@ -145,6 +155,6 @@ Use the following skills when working on related files:
 | `renovate.json`                  | `/renovate`    |
 | `README.md`                      | `/readme`      |
 | `.github/workflows/*.{yml,yaml}` | `/ci-workflow` |
-| `README.md` / `CLAUDE.md` (Mermaid blocks)   | `/architecture-diagrams` |
+| `README.md` / `CLAUDE.md` (Mermaid blocks) | `/architecture-diagrams` |
 
 When spawning subagents, always pass conventions from the respective skill into the agent's prompt.

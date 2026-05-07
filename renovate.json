@@ -11,7 +11,7 @@
   "automerge": true,
   "automergeType": "branch",
   "automergeStrategy": "squash",
-  "enabledManagers": ["npm", "github-actions", "dockerfile", "custom.regex"],
+  "enabledManagers": ["npm", "github-actions", "dockerfile", "mise", "custom.regex"],
   "ignoreTests": false,
   "lockFileMaintenance": {
     "enabled": true,
@@ -31,7 +31,7 @@
       "description": "Update Makefile tool versions via inline renovate comments",
       "managerFilePatterns": ["/^Makefile$/"],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)( extractVersion=(?<extractVersion>[^\\s]+))?( versioning=(?<versioning>[^\\s]+))?\\n[A-Z_]+\\s*:=\\s*(?<currentValue>[^\\s]+)"
+        "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)(?: registryUrl=(?<registryUrl>[^\\s]+))?(?: extractVersion=(?<extractVersion>[^\\s]+))?(?: versioning=(?<versioning>[^\\s]+))?\\n[A-Z_]+\\s*[?:]?=\\s*(?<currentValue>[^\\s]+)"
       ]
     }
   ],

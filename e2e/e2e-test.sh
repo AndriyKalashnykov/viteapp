@@ -68,11 +68,35 @@ assert_body_contains /some/spa/route '<div id="root"'
 assert_status GET / 200
 assert_body_contains / '<div id="root"'
 
-# Security headers (configured in nginx/nginx.conf).
-assert_header / X-Content-Type-Options 'nosniff'
-assert_header / X-Frame-Options '(SAMEORIGIN|DENY)'
-assert_header / Referrer-Policy '.+'
-assert_header / Permissions-Policy '.+'
+# Hashed bundle URL: discover the JS bundle from index.html and verify it serves correctly.
+# Catches Rolldown/terser regressions producing 404 on the bundle.
+bundle_path=$(curl -sf "$BASE/" | grep -oE '/assets/[^"]+\.js' | head -1)
+if [[ -n "$bundle_path" ]]; then
+  assert_status GET "$bundle_path" 200
+  assert_header "$bundle_path" Content-Type 'javascript'
+else
+  log_fail "GET / did not reference any /assets/*.js bundle"
+fi
+
+# 404 negative path: a file-extension URL not in dist/ falls through to the SPA
+# catch-all (try_files $uri /index.html), which is intentional. Pin the contract.
+assert_status GET /nonexistent.png 200
+assert_body_contains /nonexistent.png '<div id="root"'
+
+# Server-level security headers (set globally in nginx.conf, must inherit
+# everywhere — test on root, SPA fallback, and BOTH health endpoints to lock
+# the inheritance contract. nginx silently shadows all parent add_header
+# directives if any location block defines its own add_header.
+for path in / /some/spa/route /internal/isalive /internal/isready; do
+  assert_header "$path" X-Content-Type-Options 'nosniff'
+  assert_header "$path" X-Frame-Options '(SAMEORIGIN|DENY)'
+  assert_header "$path" Referrer-Policy '.+'
+  assert_header "$path" Permissions-Policy '.+'
+  assert_header "$path" Content-Security-Policy "default-src 'self'"
+  assert_header "$path" Cross-Origin-Embedder-Policy 'require-corp'
+  assert_header "$path" Cross-Origin-Opener-Policy 'same-origin'
+  assert_header "$path" Cross-Origin-Resource-Policy 'same-origin'
+done
 
 # server_tokens off -> Server header should not leak an nginx version.
 assert_header_absent / X-Powered-By

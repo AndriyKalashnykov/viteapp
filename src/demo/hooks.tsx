@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ThemeContext } from "../main";
+import { ThemeContext } from "../theme";
 
 const initialState = { count: 0 };
 

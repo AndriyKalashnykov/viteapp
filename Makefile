@@ -205,9 +205,12 @@ release:
 #ci-run: @ Run GitHub Actions workflow locally using act (simulates push to main)
 # Use bash-array `--secret KEY` env-only form when secrets are eventually
 # needed — never `--secret KEY=$$VAR` (value would land in `ps -ef` argv).
+# `--var ACT=true` powers `if: ${{ vars.ACT != 'true' }}` job/step gates
+# (dast skip, etc.). Real GitHub Actions runs see `vars.ACT` unset.
 ci-run: deps
 	@docker container prune -f 2>/dev/null || true
-	@act push --container-architecture linux/amd64 --artifact-server-path /tmp/act-artifacts
+	@docker rm -f viteapp-test viteapp-smoke viteapp-dast 2>/dev/null || true
+	@act push --container-architecture linux/amd64 --artifact-server-path /tmp/act-artifacts --var ACT=true
 
 #ci-run-tag: @ Run GitHub Actions workflow locally with a tag event (exercises docker job + DAST)
 ci-run-tag: deps
@@ -219,10 +222,12 @@ ci-run-tag: deps
 	@# OIDC issuer locally). The act-runner exits 0 by ignoring exit code 137
 	@# from sigstore/cosign-installer's keyless-OIDC mint step; every other
 	@# job/step failure still propagates. Do NOT add a blanket `|| true`.
+	@docker rm -f viteapp-test viteapp-smoke viteapp-dast 2>/dev/null || true
 	@act push \
 		--eventpath /tmp/act-tag-event.json \
 		--container-architecture linux/amd64 \
 		--artifact-server-path /tmp/act-artifacts \
+		--var ACT=true \
 		--env ACT_FAIL_ON_NO_JOBS=false
 
 #renovate: @ Run Renovate locally in dry-run mode (requires GITHUB_TOKEN)

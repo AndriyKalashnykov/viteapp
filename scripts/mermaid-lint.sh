@@ -25,7 +25,25 @@ if [[ ${#files[@]} -eq 0 ]]; then
   exit 0
 fi
 
-tmp=$(mktemp -d)
+# Skip under act (Docker-in-Docker bind-mount limitation): the script writes
+# .mmd files inside the act-runner container, then asks the HOST's Docker
+# daemon to bind-mount that path into minlag/mermaid-cli. The act-runner's
+# filesystem isn't visible to the host daemon (act uses docker cp, not a
+# shared volume), so the mount lands empty and mermaid-cli errors with
+# "Input file doesn't exist". Real GitHub Actions runners don't have this
+# constraint (no DinD). `make ci` still runs mermaid-lint natively for local
+# coverage; act exercises every other static-check piece.
+if [[ "${ACT:-false}" == "true" ]]; then
+  echo "mermaid-lint: skipped under act (DinD bind-mount; covered by make ci on host)"
+  exit 0
+fi
+
+# Use a workspace-local temp dir so the path is identical inside act-runner
+# and on the host. mktemp default ($TMPDIR/tmp.XXX) only exists in the
+# act-runner container; the host Docker daemon (which resolves bind-mounts)
+# can't see it, and `docker run -v "$tmp":/data` lands an empty /data inside
+# minlag/mermaid-cli, which then errors with "Input file doesn't exist".
+tmp=$(mktemp -d -p "$PWD" .mermaid-lint.XXXXXX)
 trap 'rm -rf "$tmp"' EXIT
 
 idx=0

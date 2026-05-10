@@ -58,6 +58,16 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: "**/pnpm-lock.yaml"
 
+      # mise installs the binary tools `make static-check` needs (hadolint,
+      # trivy, gitleaks, container-structure-test) per .mise.toml. Without
+      # this, the Makefile's mise-install is CI-guarded off and `make lint`
+      # fails with `hadolint: No such file or directory`.
+      - name: Set up mise
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          install: true
+          cache: true
+
       - name: Install dependencies
         run: make install
 

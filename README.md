@@ -5,7 +5,7 @@
 
 # viteapp — Hardened Vite + React SPA Pipeline
 
-A Vite + React + TypeScript SPA shipped as a hardened multi-arch (`amd64`/`arm64`) nginx container, signed with cosign keyless OIDC on tag push to GHCR. The CI pipeline gates publish on Trivy filesystem + image scans (CRITICAL/HIGH blocking), container-structure-test, ZAP baseline DAST in fail-on-warn mode, 80 % Vitest coverage, and 43 curl-based e2e assertions. nginx serves the SPA under strict CSP/COEP/COOP/CORP with immutable cache for hashed `/assets/*` and `no-cache` on the index + SPA fallback.
+A Vite + React + TypeScript SPA shipped as a hardened multi-arch (`amd64`/`arm64`) nginx container, signed with cosign keyless OIDC on tag push to GHCR. The CI pipeline gates publish on Trivy filesystem + image scans (CRITICAL/HIGH blocking), container-structure-test, ZAP baseline DAST in fail-on-warn mode, 80 % Vitest coverage, and 49 curl-based e2e assertions. nginx serves the SPA under strict CSP/COEP/COOP/CORP with immutable cache for hashed `/assets/*` and `no-cache` on the index + SPA fallback.
 
 ```mermaid
 C4Context
@@ -38,7 +38,7 @@ C4Context
 ## Quick Start
 
 ```bash
-make deps      # install system dependencies (node, pnpm, docker, git)
+make deps      # install mise + Node + pnpm + binary tools (act, hadolint, trivy, gitleaks, container-structure-test)
 make build     # type-check and build for production
 make test      # run Vitest tests
 make run       # start Vite dev server with HMR
@@ -132,11 +132,12 @@ Run `make help` to see all available targets.
 
 | Target              | Description                                                       |
 | ------------------- | ----------------------------------------------------------------- |
+| `make check-node-alignment` | Verify the Node version matches across `.nvmrc` and Dockerfile (Renovate split-drift guard) |
 | `make lint`         | Run ESLint and hadolint on source files                           |
 | `make vulncheck`    | Check for known vulnerabilities in dependencies (moderate+)       |
 | `make trivy-fs`     | Trivy filesystem scan (vuln, secret, misconfig)                   |
 | `make secrets`      | Scan repository for leaked secrets via gitleaks                   |
-| `make static-check` | Composite quality gate (format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint) |
+| `make static-check` | Composite quality gate (check-node-alignment, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint) |
 | `make mermaid-lint` | Parse every ` ```mermaid ` fenced block via pinned `minlag/mermaid-cli`   |
 | `make format`       | Format source files with Prettier                                 |
 | `make format-check` | Check formatting without writing                                  |
@@ -189,7 +190,7 @@ GitHub Actions runs on every push to `main`, tags `v*`, pull requests, and `work
 | Job              | Triggers       | Steps                                                                                          |
 | ---------------- | -------------- | ---------------------------------------------------------------------------------------------- |
 | **changes**      | push, PR, tags | `dorny/paths-filter` — sets `outputs.code` true when non-doc files change. Tag push always true |
-| **static-check** | code change    | Install, `make static-check` (format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)  |
+| **static-check** | code change    | Install, `make static-check` (check-node-alignment, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)  |
 | **build**        | code change    | Install, Build (after static-check)                                                            |
 | **test**         | code change    | Install, `make coverage-check` (Vitest + 80% thresholds, after static-check)                   |
 | **e2e**          | code change    | Build image, `make e2e` — curl-based tests against nginx (health, SPA fallback, headers, hashed bundle, 404 fallback) |

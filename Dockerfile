@@ -40,6 +40,10 @@ USER 101
 COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder ./app/dist /usr/share/nginx/html
 EXPOSE 8080
+# Probe 127.0.0.1, not localhost: the Alpine image's /etc/hosts lists `::1 localhost`
+# first, so busybox wget resolves localhost to IPv6 and connects to [::1]:8080, but
+# nginx `listen 8080;` binds IPv4 (0.0.0.0) only → Connection refused → perpetual
+# `unhealthy`. CI never caught this because e2e/smoke hit the host-published port.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget -qO- http://localhost:8080/internal/isalive || exit 1
+  CMD wget -qO- http://127.0.0.1:8080/internal/isalive || exit 1
 CMD ["nginx", "-g", "daemon off;"]

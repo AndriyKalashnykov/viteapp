@@ -74,6 +74,18 @@
       "description": "Group Makefile tool versions",
       "matchManagers": ["custom.regex"],
       "groupName": "Makefile tools"
+    },
+    {
+      "description": "Disable digest pinning for the Makefile docker-datasource dev tool (mermaid-cli). config:best-practices' docker:pinDigests otherwise generates a pinDigest update that collides with the version bump in the Makefile-tools branch and silently drops the bump. Scoped by file+datasource (NOT matchManagers, which surfaces as `regex` and can void the AND-combined rule). mermaid-cli is a lint tool, not production runtime; production digests (Dockerfile FROM) are untouched.",
+      "matchFileNames": ["Makefile"],
+      "matchDatasources": ["docker"],
+      "pinDigests": false
+    },
+    {
+      "description": "Hold mise tool bumps (act/hadolint/trivy/gitleaks/container-structure-test) for a 3-day stability buffer. mise's aqua: backend installs from GitHub Release assets but Renovate tracks them by tag (github-tags) — upstreams that push a tag before publishing the release binary 404 `mise install` (trivy is a recurring offender). The buffer lets the release publish before the PR opens.",
+      "matchManagers": ["mise"],
+      "groupName": "mise tools",
+      "minimumReleaseAge": "3 days"
     }
   ]
 }

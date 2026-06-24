@@ -11,7 +11,7 @@
   "automerge": true,
   "automergeType": "pr",
   "automergeStrategy": "squash",
-  "enabledManagers": ["npm", "nvm", "github-actions", "dockerfile", "mise", "custom.regex"],
+  "enabledManagers": ["npm", "github-actions", "dockerfile", "mise", "custom.regex"],
   "ignoreTests": false,
   "lockFileMaintenance": {
     "enabled": true,
@@ -33,6 +33,17 @@
       "matchStrings": [
         "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)(?: registryUrl=(?<registryUrl>[^\\s]+))?(?: extractVersion=(?<extractVersion>[^\\s]+))?(?: versioning=(?<versioning>[^\\s]+))?\\n[A-Z_]+\\s*[?:]?=\\s*(?<currentValue>[^\\s]+)"
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "Track the .nvmrc Node version via the DOCKER datasource, querying the SAME `node:<ver>-alpine` tag variant the Dockerfile FROM line uses (via currentValueTemplate appending `-alpine`), and writing back only the bare version (autoReplaceStringTemplate `{{{newVersion}}}`, no `-alpine`, no digest) so mise/corepack/nvm can read it. Querying the identical alpine tag set is load-bearing: the plain `node:<ver>` (Debian) tags are rebuilt/re-pushed more often than the `-alpine` tags, so a docker-datasource lookup against the plain tags assigns a NEWER release timestamp to the same Node version — which makes minimumReleaseAge gate the two pins to DIFFERENT versions (.nvmrc lagging the Dockerfile by a release). Matching the alpine variant gives both pins identical timestamps, so they always resolve to the same version. The built-in `nvm` manager (node-version datasource, follows nodejs.org) is disabled in enabledManagers precisely because it cannot share Docker Hub's tag timeline.",
+      "managerFilePatterns": ["/^\\.nvmrc$/"],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "node",
+      "versioningTemplate": "node",
+      "matchStrings": ["(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      "currentValueTemplate": "{{{currentValue}}}-alpine",
+      "autoReplaceStringTemplate": "{{{newVersion}}}"
     }
   ],
   "packageRules": [
@@ -70,20 +81,26 @@
       "groupName": "Docker dependencies"
     },
     {
-      "description": "Group the Node toolchain (.nvmrc + Dockerfile builder) so both bump together and stay aligned (enforced by `make check-node-alignment`)",
-      "matchManagers": ["nvm", "dockerfile"],
+      "description": "Group the Node toolchain (.nvmrc via its custom manager + Dockerfile builder) so both bump together and stay aligned (enforced by `make check-node-alignment`). Two coupled root-cause fixes here: (1) both pins resolve from the DOCKER datasource (see the .nvmrc customManager), so the grouped PR proposes one identical version and they can no longer drift apart — matched by depName across managers, not matchManagers (the .nvmrc pin is a custom.regex manager now). (2) minimumReleaseAge holds the bump 3 days because a brand-new Node release's `node:<ver>-alpine` tag appears on Docker Hub as a multi-arch INDEX before its per-platform (amd64/arm64) child manifests finish propagating — building against it in that window fails the docker job with `no match for platform in manifest`. The 3-day buffer lets Docker Hub finish publishing before the PR opens. Node is build-time-only here (multi-stage; the runtime image is nginx), so delaying Node patches has no production-runtime security exposure.",
       "matchDepNames": ["node"],
-      "groupName": "Node toolchain"
+      "groupName": "Node toolchain",
+      "minimumReleaseAge": "3 days"
     },
     {
-      "description": "Group Makefile tool versions",
-      "matchManagers": ["custom.regex"],
+      "description": "Group Makefile tool versions. Scoped by file (matchFileNames: Makefile) rather than matchManagers: custom.regex, because the .nvmrc node pin is now ALSO a custom.regex manager — a matchManagers scope would wrongly fold it into this group.",
+      "matchFileNames": ["Makefile"],
       "groupName": "Makefile tools"
     },
     {
       "description": "Disable digest pinning for the Makefile docker-datasource dev tool (mermaid-cli). config:best-practices' docker:pinDigests otherwise generates a pinDigest update that collides with the version bump in the Makefile-tools branch and silently drops the bump. Scoped by file+datasource (NOT matchManagers, which surfaces as `regex` and can void the AND-combined rule). mermaid-cli is a lint tool, not production runtime; production digests (Dockerfile FROM) are untouched.",
       "matchFileNames": ["Makefile"],
       "matchDatasources": ["docker"],
+      "pinDigests": false
+    },
+    {
+      "description": "The .nvmrc node pin resolves from the docker datasource (to stay in lockstep with the Dockerfile FROM pin), but .nvmrc must remain a BARE version string that mise/corepack/nvm can read. Disable config:best-practices' docker:pinDigests for it so Renovate never appends @sha256 and corrupts the file.",
+      "matchFileNames": [".nvmrc"],
+      "matchDepNames": ["node"],
       "pinDigests": false
     },
     {

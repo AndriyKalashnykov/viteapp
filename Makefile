@@ -14,7 +14,7 @@ ZAP_VERSION         := 2.17.0
 # renovate: datasource=docker depName=minlag/mermaid-cli
 MERMAID_CLI_VERSION := 11.15.0
 # renovate: datasource=npm depName=renovate
-RENOVATE_VERSION    := 43.233.4
+RENOVATE_VERSION    := 43.234.0
 # renovate: datasource=npm depName=depcheck
 DEPCHECK_VERSION    := 1.4.7
 

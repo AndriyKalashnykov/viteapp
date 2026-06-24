@@ -1,9 +1,17 @@
 # syntax=docker/dockerfile:1
 # https://hub.docker.com/_/node/tags
 FROM node:24.15.0-alpine@sha256:8e2c930fda481a6ec141fe5a88e8c249c69f8102fe98af505f38c081649ea749 AS builder
-RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+# Corepack reads the pnpm version from package.json's `packageManager` field
+# (single source of truth) — no hardcoded version here. COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# suppresses corepack's interactive download-consent prompt so the first pnpm
+# invocation provisions pnpm non-interactively (it otherwise blocks the build on
+# stdin right after a pnpm major bump).
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+# pnpm-workspace.yaml carries the `overrides` (pnpm 10+ location) — REQUIRED for
+# --frozen-lockfile to resolve the CVE-patched transitive deps inside the image.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build

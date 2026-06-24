@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Development Commands
 
 **Version manager:** mise (portfolio-wide; reads `.nvmrc` natively + binary tools pinned in `.mise.toml`, auto-installed by `make deps`)
-**Package manager:** pnpm (via corepack; version pinned in `package.json` `packageManager`)
+**Package manager:** pnpm 11 (via corepack; version pinned in `package.json` `packageManager`). Dependency `overrides` and the `allowBuilds` build-script policy live in `pnpm-workspace.yaml` — pnpm 11 removed the legacy `pnpm.overrides` / `pnpm.ignoredBuiltDependencies` package.json fields.
 
 ```bash
 make deps              # Install mise + Node + pnpm + binary tools (act, hadolint, trivy, gitleaks, container-structure-test) from .mise.toml
@@ -89,7 +89,7 @@ Vite config (`vite.config.ts`):
 
 ## Docker & Deployment
 
-Multi-stage build: Node 24 Alpine builder -> official `nginx:1.29.8-alpine` server with a DIY unprivileged-user setup (runs as UID 101, PID file in `/tmp`, `apk upgrade --no-cache` for Alpine CVE patches). The official image is tracked directly because the `nginxinc/nginx-unprivileged` variant lagged the official rebuild cadence by multiple patch releases.
+Multi-stage build: Node 24 Alpine builder -> official `nginx:1.30.0-alpine` server with a DIY unprivileged-user setup (runs as UID 101, PID file in `/tmp`, `apk upgrade --no-cache` for Alpine CVE patches). The official image is tracked directly because the `nginxinc/nginx-unprivileged` variant lagged the official rebuild cadence by multiple patch releases.
 
 Nginx (`nginx/nginx.conf`):
 
@@ -137,13 +137,10 @@ Cleanup (`.github/workflows/cleanup-runs.yml`):
 
 ## Upgrade Backlog
 
-Last reviewed: 2026-05-07 (`/upgrade-analysis`)
+Last reviewed: 2026-06-23 (`/makefile` + `/ci-workflow` upgrade pass)
 
-- [x] ~~`eslint-plugin-react-hooks` peer dep warning — 7.1.1 now lists `eslint ^10.0.0` in peerDependencies, retiring the workaround.~~ **Resolvable now via patch bump 7.0.1 → 7.1.1 (Wave 1).**
-- [ ] **nginx 1.29.8 → 1.30.x-alpine** — 1.30 GA available on Docker Hub. Drop-in once verified in a build. Re-check CSP/Cache-Control headers (server-level `add_header` semantics are stable across 1.29→1.30 but worth a single `make e2e + make dast` after the bump).
-- [ ] **postcss override (`pnpm.overrides`)** — `postcss@<8.5.10` is overridden to `>=8.5.10` to clear GHSA-qx2v-qp2m-jg93 (vite still pulls postcss transitively at the older version). Re-evaluate when vite ships a release that pins postcss directly.
-- [ ] **pnpm v10 → v11** — currently 10.33.0; pnpm v11 is in RC (per `pnpm/action-setup` v6 release notes). Monitor for GA before bumping `package.json` `packageManager` and `.mise.toml`.
-- [ ] **Renovate npx pin 41 → 43** — `make renovate` / `make renovate-validate` invoke `npx renovate@$(RENOVATE_VERSION)`. Renovate 42/43 breaking changes (timestamp-required `minimumReleaseAge`, Gradle-wrapper unsafe execution) verified inert for this project. Drop-in (Wave 2).
+- [ ] **`undici` override (`pnpm-workspace.yaml`)** — `undici@>=7.0.0 <7.28.0` is overridden to `^7.28.0` to clear the TLS cert-validation-bypass / WebSocket-DoS / cross-origin-routing advisories (transitive via `@vitest/coverage-v8 > vitest > jsdom > undici`). Remove when jsdom/vitest ship a release that pulls `undici >= 7.28.0` directly.
+- [ ] **`brace-expansion` override (`pnpm-workspace.yaml`)** — `brace-expansion@>=5.0.0 <5.0.6` is overridden to `^5.0.6` to clear the ReDoS advisory (transitive via eslint). Remove when eslint pulls `brace-expansion >= 5.0.6` directly.
 
 ## Skills
 

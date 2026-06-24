@@ -11,7 +11,7 @@
   "automerge": true,
   "automergeType": "branch",
   "automergeStrategy": "squash",
-  "enabledManagers": ["npm", "github-actions", "dockerfile", "mise", "custom.regex"],
+  "enabledManagers": ["npm", "nvm", "github-actions", "dockerfile", "mise", "custom.regex"],
   "ignoreTests": false,
   "lockFileMaintenance": {
     "enabled": true,
@@ -63,6 +63,12 @@
       "description": "Group Docker base images",
       "matchDatasources": ["docker"],
       "groupName": "Docker dependencies"
+    },
+    {
+      "description": "Group the Node toolchain (.nvmrc + Dockerfile builder) so both bump together and stay aligned (enforced by `make check-node-alignment`)",
+      "matchManagers": ["nvm", "dockerfile"],
+      "matchDepNames": ["node"],
+      "groupName": "Node toolchain"
     },
     {
       "description": "Group Makefile tool versions",

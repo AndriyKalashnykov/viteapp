@@ -26,6 +26,14 @@ export PATH := $(HOME)/.local/share/mise/shims:$(HOME)/.local/bin:$(PATH)
 # CI-safe pnpm install: uses --frozen-lockfile when CI=true (set by GitHub Actions)
 PNPM_INSTALL := pnpm install $(if $(CI),--frozen-lockfile,)
 
+# Corepack provisions the pnpm version pinned in package.json `packageManager`
+# on first use of an uncached version (e.g. right after a pnpm major bump). The
+# first corepack/pnpm call then prints an interactive download-consent prompt
+# and BLOCKS on stdin — hanging `make deps` in CI and on cold machines.
+# Auto-confirming is safe: the version is already pinned deterministically, so
+# this only suppresses the consent step, it does not change what is installed.
+export COREPACK_ENABLE_DOWNLOAD_PROMPT := 0
+
 #help: @ List available tasks
 help:
 	@echo "Usage: make COMMAND"
@@ -104,8 +112,19 @@ secrets: deps
 mermaid-lint:
 	@./scripts/mermaid-lint.sh $(MERMAID_CLI_VERSION)
 
-#static-check: @ Composite quality gate (format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)
-static-check: format-check lint vulncheck trivy-fs secrets mermaid-lint
+#check-node-alignment: @ Verify the Node version matches across .nvmrc and Dockerfile (fails fast on Renovate split drift)
+check-node-alignment:
+	@nvmrc=$$(tr -d '[:space:]' < .nvmrc); \
+		dockerfile=$$(grep -oE 'node:[0-9]+\.[0-9]+\.[0-9]+' Dockerfile | head -1 | cut -d: -f2); \
+		if [ "$$nvmrc" != "$$dockerfile" ]; then \
+			echo "ERROR: Node version disagrees across files:"; \
+			printf "  %-12s %s\n" .nvmrc "$$nvmrc" Dockerfile "$$dockerfile"; \
+			echo "  Bump both together (Renovate groups them via the 'Node toolchain' rule)."; \
+			exit 1; \
+		fi
+
+#static-check: @ Composite quality gate (check-node-alignment, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)
+static-check: check-node-alignment format-check lint vulncheck trivy-fs secrets mermaid-lint
 	@echo "static-check passed."
 
 #deps-update: @ Update dependencies to latest compatible versions (pnpm update)
@@ -246,6 +265,7 @@ renovate-validate:
 	@npx --yes --package renovate@$(RENOVATE_VERSION) -- renovate-config-validator --strict renovate.json
 
 .PHONY: help deps clean install lint build test coverage-check vulncheck \
-	trivy-fs secrets static-check deps-update deps-prune deps-prune-check \
-	run format format-check ci image-build image-run image-stop image-cst \
-	e2e dast release ci-run ci-run-tag renovate renovate-validate mermaid-lint
+	trivy-fs secrets check-node-alignment static-check deps-update deps-prune \
+	deps-prune-check run format format-check ci image-build image-run \
+	image-stop image-cst e2e dast release ci-run ci-run-tag renovate \
+	renovate-validate mermaid-lint

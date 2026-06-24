@@ -27,12 +27,12 @@ C4Context
 | Framework        | React 19.2                                                  |
 | Build tool       | Vite 8.0 (Rolldown bundler, terser minifier)                |
 | Testing          | Vitest 4.1 + @testing-library/react 16 + jsdom + v8 coverage (80% thresholds) |
-| Runtime          | Node.js 24.14 (pinned via `.nvmrc`)                         |
-| Package manager  | pnpm 10.33 (pinned via `package.json` `packageManager`)     |
+| Runtime          | Node.js 24.15 (pinned via `.nvmrc`)                         |
+| Package manager  | pnpm 11.9 (pinned via `package.json` `packageManager`)      |
 | Version manager  | mise (reads `.nvmrc`; pins act/hadolint/trivy/gitleaks/container-structure-test in `.mise.toml`) |
-| Container        | Official nginx 1.29-alpine, DIY unprivileged UID 101 (multi-arch amd64/arm64) |
+| Container        | Official nginx 1.30.0-alpine, DIY unprivileged UID 101 (multi-arch amd64/arm64) |
 | CI/CD            | GitHub Actions + Trivy + container-structure-test + ZAP DAST + Cosign keyless OIDC |
-| Code quality     | ESLint 10 + Prettier 3.8 + hadolint 2.14 + gitleaks 8.30 + Trivy 0.69 + mermaid-cli 11.12 |
+| Code quality     | ESLint 10 + Prettier 3.8 + hadolint 2.14 + gitleaks 8.30 + Trivy 0.70 + mermaid-cli 11.14 |
 | Dependency mgmt  | Renovate (platform automerge, branch strategy)              |
 
 ## Quick Start
@@ -52,7 +52,7 @@ make run       # start Vite dev server with HMR
 | [GNU Make](https://www.gnu.org/software/make/) | 3.81+   | Build orchestration         |
 | [mise](https://mise.jdx.dev/)                  | latest  | Portfolio version manager — auto-installed by `make deps`; reads `.nvmrc` + `.mise.toml` |
 | [Node.js](https://nodejs.org/)                 | 24+     | JavaScript runtime — installed by mise from `.nvmrc` |
-| [pnpm](https://pnpm.io/)                       | 10.33+  | Package manager — installed by `make deps` via corepack (version pinned in `package.json`) |
+| [pnpm](https://pnpm.io/)                       | 11.9+   | Package manager — installed by `make deps` via corepack (version pinned in `package.json`) |
 | [Docker](https://www.docker.com/)              | latest  | Container builds (optional) |
 | [Git](https://git-scm.com/)                    | latest  | Version control             |
 
@@ -83,7 +83,7 @@ Single-page React application built with Vite and served as a static bundle by n
 
 **Container runtime**
 
-Multi-stage Docker build: Node 24 Alpine builder → official `nginx:1.29-alpine` server with a DIY unprivileged-user setup. The Dockerfile drops the `user nginx;` directive from `nginx.conf`, relocates the PID file from `/run/nginx.pid` (root-only) to `/tmp/nginx.pid`, chowns `/var/cache/nginx` and `/var/log/nginx` to UID 101, and runs the entire process under `USER 101`. `apk upgrade --no-cache` patches Alpine OS CVEs.
+Multi-stage Docker build: Node 24 Alpine builder → official `nginx:1.30.0-alpine` server with a DIY unprivileged-user setup. The Dockerfile drops the `user nginx;` directive from `nginx.conf`, relocates the PID file from `/run/nginx.pid` (root-only) to `/tmp/nginx.pid`, chowns `/var/cache/nginx` and `/var/log/nginx` to UID 101, and runs the entire process under `USER 101`. `apk upgrade --no-cache` patches Alpine OS CVEs.
 
 The project previously used `nginxinc/nginx-unprivileged` but switched to the official image because the unprivileged variant lagged the official rebuild cadence by multiple patch releases (e.g. stuck at 1.29.5 while upstream shipped 1.29.6/7/8).
 
@@ -100,7 +100,7 @@ Nginx (`nginx/nginx.conf`):
 | Stage         | Command            | Output                                              | Notes                                                  |
 | ------------- | ------------------ | --------------------------------------------------- | ------------------------------------------------------ |
 | Compile       | `make build`       | `dist/` (Vite Rolldown bundle, terser-minified)     | `tsc && vite build`                                    |
-| OCI image     | `make image-build` | `viteapp:<tag>` in local Docker daemon (multi-stage)| Node 24 alpine builder → official nginx 1.29-alpine    |
+| OCI image     | `make image-build` | `viteapp:<tag>` in local Docker daemon (multi-stage)| Node 24 alpine builder → official nginx 1.30.0-alpine  |
 | Image scan    | CI `docker` job    | Trivy fail-on CRITICAL/HIGH (`ignore-unfixed: true`)| Locally: included in `make ci-run` via act             |
 | Image structure | `make image-cst` | container-structure-test pass/fail                  | Asserts USER 101, EXPOSE 8080, file presence, nginx -t |
 

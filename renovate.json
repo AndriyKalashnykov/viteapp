@@ -7,9 +7,9 @@
   "labels": ["dependencies"],
   "prConcurrentLimit": 50,
   "prHourlyLimit": 0,
-  "platformAutomerge": true,
+  "platformAutomerge": false,
   "automerge": true,
-  "automergeType": "branch",
+  "automergeType": "pr",
   "automergeStrategy": "squash",
   "enabledManagers": ["npm", "nvm", "github-actions", "dockerfile", "mise", "custom.regex"],
   "ignoreTests": false,
@@ -40,6 +40,11 @@
       "description": "Wait 3 days before automerging major updates",
       "matchUpdateTypes": ["major"],
       "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Pin the undici override to the 7.x line. The override (pnpm-workspace.yaml) clears CVEs in undici 7.x, which is the line jsdom 29.1.1 hard-requires (`undici/lib/handler/wrap-handler.js`); undici v8 moved that path and breaks the vitest/jsdom test runtime. Remove this cap when jsdom ships a release that consumes undici >= 8.",
+      "matchPackageNames": ["undici"],
+      "allowedVersions": "<8"
     },
     {
       "description": "Group GitHub Actions into one PR",

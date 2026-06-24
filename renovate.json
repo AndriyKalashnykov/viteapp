@@ -91,6 +91,11 @@
       "matchManagers": ["mise"],
       "groupName": "mise tools",
       "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Throttle the local Renovate CLI pin (RENOVATE_VERSION in the Makefile, custom.regex manager). Renovate publishes to npm several times a day; the npm manager's minimumReleaseAge does NOT cover a custom.regex pin, so this self-bump generated near-daily PR noise. matchDepNames matches regardless of manager. 7 days keeps this dev-only tool roughly weekly.",
+      "matchDepNames": ["renovate"],
+      "minimumReleaseAge": "7 days"
     }
   ]
 }

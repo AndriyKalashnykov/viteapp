@@ -139,8 +139,7 @@ Cleanup (`.github/workflows/cleanup-runs.yml`):
 
 Last reviewed: 2026-06-24 (`/upgrade-analysis` + `/renovate` pass)
 
-- [ ] **`undici` v8 major bump (Renovate PR) needs review before merge** — Renovate proposes bumping the `pnpm-workspace.yaml` `undici` override from `^7.28.0` to v8 (major). jsdom/vitest expect undici 7.x; a v8 bump of the override could break the test runtime. Hold until CI on that PR is confirmed green (and ideally verify jsdom resolves cleanly) — do not auto-merge it blindly. (Renovate was reinstalled 2026-06-24 after a ~2.5-month outage and opened PRs for all accumulated drift; the routine non-major bumps auto-merge once `automergeType: pr` lands, the majors wait out their 3-day buffer.)
-- [ ] **`undici` override (`pnpm-workspace.yaml`)** — `undici@>=7.0.0 <7.28.0` is overridden to `^7.28.0` to clear the TLS cert-validation-bypass / WebSocket-DoS / cross-origin-routing advisories (transitive via `@vitest/coverage-v8 > vitest > jsdom > undici`). Remove when jsdom/vitest ship a release that pulls `undici >= 7.28.0` directly.
+- [ ] **`undici` override (`pnpm-workspace.yaml`) + `<8` cap (`renovate.json`)** — `undici@>=7.0.0 <7.28.0` is overridden to `^7.28.0` to clear the TLS cert-validation-bypass / WebSocket-DoS / cross-origin-routing advisories (transitive via `@vitest/coverage-v8 > vitest > jsdom > undici`). A Renovate `allowedVersions: <8` cap holds it on the 7.x line because jsdom 29.1.1 hard-requires `undici/lib/handler/wrap-handler.js`, which undici v8 removed (verified: PR #303 broke the vitest/jsdom runtime and was closed). Remove both the override and the `<8` cap when jsdom ships a release that consumes `undici >= 8` directly.
 - [ ] **`brace-expansion` override (`pnpm-workspace.yaml`)** — `brace-expansion@>=5.0.0 <5.0.6` is overridden to `^5.0.6` to clear the ReDoS advisory (transitive via eslint). Remove when eslint pulls `brace-expansion >= 5.0.6` directly.
 
 ## Skills

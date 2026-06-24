@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 make deps              # Install mise + Node + pnpm + binary tools (act, hadolint, trivy, gitleaks, container-structure-test) from .mise.toml
 make install           # pnpm install (runs deps first)
+make check-node-alignment # Verify Node version matches across .nvmrc and Dockerfile (Renovate split-drift guard)
 make lint              # ESLint + hadolint + shell-script executable-bit guard
 make build             # TypeScript check + Vite production build (runs install first)
 make test              # Run Vitest tests
@@ -21,7 +22,7 @@ make vulncheck         # Check for known vulnerabilities in dependencies (modera
 make trivy-fs          # Trivy filesystem scan (vuln, secret, misconfig)
 make secrets           # Scan repository for leaked secrets via gitleaks
 make mermaid-lint      # Parse every ```mermaid block in README.md / CLAUDE.md via pinned mermaid-cli (script: scripts/mermaid-lint.sh)
-make static-check      # Composite quality gate (format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)
+make static-check      # Composite quality gate (check-node-alignment, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)
 make ci                # Full local CI pipeline (install, static-check, coverage-check, build, deps-prune-check)
 make ci-run            # Run GitHub Actions workflow locally using act (push event)
 make ci-run-tag        # Run CI with a tag event via act (exercises docker job + DAST gate)
@@ -57,7 +58,7 @@ Test runner: `pnpm test` runs Vitest (`vitest run`). Test setup in `src/test/set
 | Layer | Target | Scope | Typical runtime |
 |-------|--------|-------|-----------------|
 | Unit | `make test` / `make coverage-check` | React components + ThemeContext via jsdom; 80% coverage gate | seconds |
-| E2E | `make e2e` | Built container through nginx: health endpoints, SPA fallback, security headers (incl. CSP/COEP/COOP/CORP), hashed bundle URL, 404 fallback | ~15s (image build + 43 curl assertions) |
+| E2E | `make e2e` | Built container through nginx: health endpoints, SPA fallback, security headers (incl. CSP/COEP/COOP/CORP), hashed bundle URL, 404 fallback | ~15s (image build + 49 curl assertions) |
 | DAST | `make dast` | ZAP baseline scan against the running container (fail-on-warn) | minutes |
 
 No integration layer — the app is a static SPA with no DB/broker/inter-service calls. `make e2e` is the first layer that exercises the full nginx surface.
@@ -106,7 +107,7 @@ GitHub Actions (`.github/workflows/ci.yml`):
 
 - Triggers: push to `main`, tags `v*`, pull requests, `workflow_call` (reusable). No trigger-level `paths-ignore` — uses a `changes` detector job (`dorny/paths-filter`) so doc-only changes skip heavy work without deadlocking Repository Rulesets that require `ci-pass`.
 - `changes` job: emits `outputs.code` (true on tag push or any non-doc file change). All heavy jobs gate on `if: needs.changes.outputs.code == 'true'`.
-- `static-check` job: checkout (`fetch-depth: 0` for gitleaks history) -> pnpm/action-setup -> setup-node (with pnpm cache) -> install -> `make static-check` (format-check + lint + vulncheck + trivy-fs + secrets + mermaid-lint, composite quality gate)
+- `static-check` job: checkout (`fetch-depth: 0` for gitleaks history) -> pnpm/action-setup -> setup-node (with pnpm cache) -> install -> `make static-check` (check-node-alignment + format-check + lint + vulncheck + trivy-fs + secrets + mermaid-lint, composite quality gate)
 - `build` job: install -> `make build` (runs after `static-check`)
 - `test` job: install -> `make coverage-check` (runs after `static-check`, parallel with `build`)
 - `e2e` job: install -> `make e2e` (curl-based assertions against built nginx container)

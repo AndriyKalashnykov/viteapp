@@ -68,8 +68,8 @@ make deps
 
 Single-page React application built with Vite and served as a static bundle by nginx.
 
-- **Entry flow:** `index.html` → `src/main.tsx` (defines `ThemeContext` inline, wraps `App`) → `src/App.tsx`
-- **State:** React Context API (`ThemeContext` for light/dark theme) plus standard hooks
+- **Entry flow:** `index.html` → `src/main.tsx` (wraps `App` in `ThemeProvider`) → `src/App.tsx`
+- **State:** React Context API — a light/dark theme toggle (`ThemeProvider` + `useTheme`) that persists to `localStorage`, defaults to the OS `prefers-color-scheme`, and applies via `<html data-theme>` + CSS variables (CSP-safe, no inline styles); plus standard hooks
 - **Path alias:** `@` → `src/` (configured in `vite.config.ts` and `tsconfig.json`)
 - **Performance:** Web Vitals via `src/reportWebVitals.ts`; all `console.*` calls stripped in production by terser `drop_console`
 

@@ -17,7 +17,6 @@ export default defineConfig({
       include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "src/main.tsx", // React bootstrap entry — DOM side effects
-        "src/demo/**", // unused demo/reference code
         "src/test/**", // test setup
         "src/vite-env.d.ts", // type-only ambient module
         "src/**/*.test.{ts,tsx}", // tests themselves

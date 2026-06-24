@@ -1,12 +1,27 @@
 import { useState } from "react";
 import reactLogo from "./assets/react.svg";
+import { useTheme } from "./theme";
 import "./App.css";
 
 function App() {
   const [count, setCount] = useState(0);
+  const { theme, toggleTheme } = useTheme();
+  const nextTheme = theme === "dark" ? "light" : "dark";
 
   return (
     <div className="App">
+      <header className="app-header">
+        <button
+          type="button"
+          className="theme-toggle"
+          data-testid="theme-toggle"
+          onClick={toggleTheme}
+          aria-label={`Switch to ${nextTheme} theme`}
+          aria-pressed={theme === "dark"}
+        >
+          {theme === "dark" ? "☀ Light mode" : "☾ Dark mode"}
+        </button>
+      </header>
       <div>
         <a href="https://vitejs.dev" target="_blank" rel="noopener noreferrer">
           <img src="/vite.svg" className="logo" alt="Vite logo" />

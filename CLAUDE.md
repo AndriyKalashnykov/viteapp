@@ -57,7 +57,7 @@ Test runner: `pnpm test` runs Vitest (`vitest run`). Test setup in `src/test/set
 
 | Layer | Target | Scope | Typical runtime |
 |-------|--------|-------|-----------------|
-| Unit | `make test` / `make coverage-check` | React components + ThemeContext via jsdom; 80% coverage gate | seconds |
+| Unit | `make test` / `make coverage-check` | React components + ThemeProvider/useTheme via jsdom; 80% coverage gate | seconds |
 | E2E | `make e2e` | Built container through nginx: health endpoints, SPA fallback, security headers (incl. CSP/COEP/COOP/CORP), hashed bundle URL, 404 fallback | ~15s (image build + 49 curl assertions) |
 | DAST | `make dast` | ZAP baseline scan against the running container (fail-on-warn) | minutes |
 
@@ -68,14 +68,14 @@ No integration layer — the app is a static SPA with no DB/broker/inter-service
 React 19 SPA built with Vite 8 and TypeScript (strict mode).
 
 - **Entry:** `index.html` -> `src/main.tsx` -> `src/App.tsx`
-- **State:** React Context API (`ThemeContext` for light/dark theme, defined in `src/theme.tsx`), standard hooks
+- **State:** React Context API — `ThemeProvider` (`src/ThemeProvider.tsx`) exposes a light/dark theme via `useTheme()` (`src/theme.tsx`). The active theme is reflected onto `<html data-theme>`, persisted to `localStorage` (key `viteapp-theme`), and defaults to the OS `prefers-color-scheme`. A toggle button in `App.tsx` flips it. Standard hooks elsewhere.
 - **Path alias:** `@` -> `src/` (configured in `vite.config.ts` and `tsconfig.json`)
 - **Performance:** Web Vitals via `src/reportWebVitals.ts` (called with `console.log` in `src/main.tsx`; all `console.*` calls stripped in production by terser `drop_console`)
 
 ### Notable design decisions
 
 - **Playwright deferred** — current curl-based e2e covers nginx surface and hashed bundle; adding a Playwright smoke against the built bundle would catch Rolldown/terser/chunking regressions jsdom cannot see. Low priority; counter logic is already unit-tested.
-- **No CSP `'unsafe-inline'`** — production code uses className-only styling so `script-src 'self'; style-src 'self'` (no `unsafe-inline`) is enforceable. `src/demo/hooks.tsx` references inline styles but is dead code (not imported by `main.tsx`/`App.tsx`); Vite tree-shakes it from the bundle.
+- **No CSP `'unsafe-inline'`** — all styling is className + CSS-custom-property based (never inline `style`), so `script-src 'self'; style-src 'self'` (no `unsafe-inline`) is enforceable. The light/dark theme switches by toggling a `data-theme` attribute on `<html>` (which selects CSS variables defined in `src/index.css`) rather than applying inline styles — that is why the theme is CSP-safe. The `ThemeContext` default carries no colors, only the theme name + setters.
 
 ## Build & Bundle Config
 

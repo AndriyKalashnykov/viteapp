@@ -11,6 +11,11 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     css: true,
+    // Scope Vitest to src/ only. Without this, Vitest's default discovery picks
+    // up e2e/browser/*.spec.ts (the Playwright specs) and fails with
+    // "Playwright Test did not expect test.describe() to be called here".
+    // Playwright owns e2e/browser/** via playwright.config.ts.
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],

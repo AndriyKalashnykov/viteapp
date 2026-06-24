@@ -12,6 +12,9 @@ dist
 dist-ssr
 coverage
 zap-output
+playwright-report
+test-results
+/playwright/.cache
 *.local
 
 # Editor directories and files

@@ -8,8 +8,8 @@
 # Run `mise install` to install all aqua-backed tools.
 
 [tools]
-"aqua:nektos/act"                                = "0.2.88"
+"aqua:nektos/act"                                = "0.2.89"
 "aqua:hadolint/hadolint"                         = "2.14.0"
-"aqua:aquasecurity/trivy"                        = "0.70.0"
+"aqua:aquasecurity/trivy"                        = "0.71.2"
 "aqua:gitleaks/gitleaks"                         = "8.30.1"
 "aqua:GoogleContainerTools/container-structure-test" = "1.22.1"

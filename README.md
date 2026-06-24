@@ -30,10 +30,10 @@ C4Context
 | Runtime          | Node.js 24.15 (pinned via `.nvmrc`)                         |
 | Package manager  | pnpm 11.9 (pinned via `package.json` `packageManager`)      |
 | Version manager  | mise (reads `.nvmrc`; pins act/hadolint/trivy/gitleaks/container-structure-test in `.mise.toml`) |
-| Container        | Official nginx 1.30.0-alpine, DIY unprivileged UID 101 (multi-arch amd64/arm64) |
+| Container        | Official nginx 1.31-alpine, DIY unprivileged UID 101 (multi-arch amd64/arm64) |
 | CI/CD            | GitHub Actions + Trivy + container-structure-test + ZAP DAST + Cosign keyless OIDC |
-| Code quality     | ESLint 10 + Prettier 3.8 + hadolint 2.14 + gitleaks 8.30 + Trivy 0.70 + mermaid-cli 11.14 |
-| Dependency mgmt  | Renovate (platform automerge, branch strategy)              |
+| Code quality     | ESLint 10 + Prettier 3.8 + hadolint 2.14 + gitleaks 8.30 + Trivy 0.71 + mermaid-cli 11.15 |
+| Dependency mgmt  | Renovate (PR automerge gated by the `ci-pass` required check) |
 
 ## Quick Start
 
@@ -83,7 +83,7 @@ Single-page React application built with Vite and served as a static bundle by n
 
 **Container runtime**
 
-Multi-stage Docker build: Node 24 Alpine builder → official `nginx:1.30.0-alpine` server with a DIY unprivileged-user setup. The Dockerfile drops the `user nginx;` directive from `nginx.conf`, relocates the PID file from `/run/nginx.pid` (root-only) to `/tmp/nginx.pid`, chowns `/var/cache/nginx` and `/var/log/nginx` to UID 101, and runs the entire process under `USER 101`. `apk upgrade --no-cache` patches Alpine OS CVEs.
+Multi-stage Docker build: Node 24 Alpine builder → official `nginx:1.31-alpine` server with a DIY unprivileged-user setup. The Dockerfile drops the `user nginx;` directive from `nginx.conf`, relocates the PID file from `/run/nginx.pid` (root-only) to `/tmp/nginx.pid`, chowns `/var/cache/nginx` and `/var/log/nginx` to UID 101, and runs the entire process under `USER 101`. `apk upgrade --no-cache` patches Alpine OS CVEs.
 
 The project previously used `nginxinc/nginx-unprivileged` but switched to the official image because the unprivileged variant lagged the official rebuild cadence by multiple patch releases (e.g. stuck at 1.29.5 while upstream shipped 1.29.6/7/8).
 
@@ -100,7 +100,7 @@ Nginx (`nginx/nginx.conf`):
 | Stage         | Command            | Output                                              | Notes                                                  |
 | ------------- | ------------------ | --------------------------------------------------- | ------------------------------------------------------ |
 | Compile       | `make build`       | `dist/` (Vite Rolldown bundle, terser-minified)     | `tsc && vite build`                                    |
-| OCI image     | `make image-build` | `viteapp:<tag>` in local Docker daemon (multi-stage)| Node 24 alpine builder → official nginx 1.30.0-alpine  |
+| OCI image     | `make image-build` | `viteapp:<tag>` in local Docker daemon (multi-stage)| Node 24 alpine builder → official nginx 1.31-alpine    |
 | Image scan    | CI `docker` job    | Trivy fail-on CRITICAL/HIGH (`ignore-unfixed: true`)| Locally: included in `make ci-run` via act             |
 | Image structure | `make image-cst` | container-structure-test pass/fail                  | Asserts USER 101, EXPOSE 8080, file presence, nginx -t |
 

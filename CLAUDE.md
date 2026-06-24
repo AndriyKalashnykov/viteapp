@@ -89,7 +89,7 @@ Vite config (`vite.config.ts`):
 
 ## Docker & Deployment
 
-Multi-stage build: Node 24 Alpine builder -> official `nginx:1.30.0-alpine` server with a DIY unprivileged-user setup (runs as UID 101, PID file in `/tmp`, `apk upgrade --no-cache` for Alpine CVE patches). The official image is tracked directly because the `nginxinc/nginx-unprivileged` variant lagged the official rebuild cadence by multiple patch releases.
+Multi-stage build: Node 24 Alpine builder -> official `nginx:1.31-alpine` server with a DIY unprivileged-user setup (runs as UID 101, PID file in `/tmp`, `apk upgrade --no-cache` for Alpine CVE patches). The official image is tracked directly because the `nginxinc/nginx-unprivileged` variant lagged the official rebuild cadence by multiple patch releases. (Renovate's docker datasource tracks the highest tag, so the pin follows nginx's mainline line — 1.31.x — not the stable 1.30.x line; the image passes the Trivy/e2e/DAST gates on every bump.)
 
 Nginx (`nginx/nginx.conf`):
 

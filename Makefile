@@ -69,7 +69,7 @@ deps:
 
 #clean: @ Remove node_modules/, dist/, coverage/, and zap-output/
 clean:
-	@rm -rf node_modules/ dist/ coverage/ zap-output/
+	@rm -rf node_modules/ dist/ coverage/ zap-output/ playwright-report/ test-results/
 
 #install: @ Install project dependencies via pnpm
 install: deps
@@ -187,6 +187,21 @@ e2e: image-build
 		docker rm -f viteapp-test >/dev/null; \
 		exit $$EXIT
 
+#e2e-browser: @ Playwright Chromium smoke against the built container (counter, theme toggle, CSP)
+e2e-browser: install image-build
+	@npx playwright install chromium
+	@docker rm -f viteapp-pw 2>/dev/null || true
+	@docker run -d --name=viteapp-pw -p 8080:8080 $(APP_NAME):$(CURRENTTAG) >/dev/null
+	@echo "Waiting for nginx to become healthy..."
+	@end=$$(( $$(date +%s) + 30 )); \
+		while [ $$(date +%s) -lt $$end ]; do \
+			curl -fsS http://localhost:8080/internal/isalive >/dev/null 2>&1 && break; \
+			sleep 1; \
+		done
+	@BASE_URL=http://localhost:8080 npx playwright test; EXIT=$$?; \
+		docker rm -f viteapp-pw >/dev/null; \
+		exit $$EXIT
+
 #dast: @ ZAP baseline DAST scan against the built image (mirrors CI gate, fail-on-warn)
 dast: image-build
 	@docker rm -f viteapp-test 2>/dev/null || true
@@ -267,5 +282,5 @@ renovate-validate:
 .PHONY: help deps clean install lint build test coverage-check vulncheck \
 	trivy-fs secrets check-node-alignment static-check deps-update deps-prune \
 	deps-prune-check run format format-check ci image-build image-run \
-	image-stop image-cst e2e dast release ci-run ci-run-tag renovate \
+	image-stop image-cst e2e e2e-browser dast release ci-run ci-run-tag renovate \
 	renovate-validate mermaid-lint

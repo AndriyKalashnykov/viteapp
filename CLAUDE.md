@@ -32,6 +32,7 @@ make image-run         # Run Docker container on port 8080
 make image-stop        # Stop the production Docker container
 make image-cst         # Container-structure-test against the built image (USER 101, EXPOSE 8080, file presence, nginx -t)
 make e2e               # E2E tests against the built container (health, SPA fallback, security headers, hashed bundle, 404 fallback)
+make e2e-browser       # Playwright Chromium smoke against the built container (counter, theme toggle + persistence, CSP)
 make dast              # ZAP baseline DAST scan against the built image (fail-on-warn; .zap/baseline-rules.tsv ignores informational 10049/10109)
 make release           # Create and push a new tag (interactive prompt for vX.Y.Z)
 make deps-update       # Update dependencies to latest compatible versions (pnpm update)
@@ -59,9 +60,10 @@ Test runner: `pnpm test` runs Vitest (`vitest run`). Test setup in `src/test/set
 |-------|--------|-------|-----------------|
 | Unit | `make test` / `make coverage-check` | React components + ThemeProvider/useTheme via jsdom; 80% coverage gate | seconds |
 | E2E | `make e2e` | Built container through nginx: health endpoints, SPA fallback, security headers (incl. CSP/COEP/COOP/CORP), hashed bundle URL, 404 fallback | ~15s (image build + 49 curl assertions) |
+| Browser E2E | `make e2e-browser` | Playwright Chromium against the built nginx container: app boot, counter, light/dark theme toggle + persistence, console CSP-violation check | ~30s (image build + Chromium) |
 | DAST | `make dast` | ZAP baseline scan against the running container (fail-on-warn) | minutes |
 
-No integration layer — the app is a static SPA with no DB/broker/inter-service calls. `make e2e` is the first layer that exercises the full nginx surface.
+No integration layer — the app is a static SPA with no DB/broker/inter-service calls. `make e2e` (curl) exercises the full nginx surface; `make e2e-browser` then drives the built bundle in a real browser (the JS behavior — theme toggle, counter, CSP enforcement — that curl and jsdom cannot reach).
 
 ## Architecture
 
@@ -74,7 +76,7 @@ React 19 SPA built with Vite 8 and TypeScript (strict mode).
 
 ### Notable design decisions
 
-- **Playwright deferred** — current curl-based e2e covers nginx surface and hashed bundle; adding a Playwright smoke against the built bundle would catch Rolldown/terser/chunking regressions jsdom cannot see. Low priority; counter logic is already unit-tested.
+- **Playwright browser smoke** (`make e2e-browser`, CI `e2e-browser` job) — a Chromium Playwright spec (`e2e/browser/app.spec.ts`, config `playwright.config.ts`) drives the built bundle inside the production nginx container, under the real CSP: app boot, counter increment, the light/dark theme toggle (`data-theme` flip + `localStorage` persistence across reload), and a console CSP-violation assertion. Catches Rolldown/terser/chunking and inline-style/CSP regressions that jsdom (source, not bundle) and curl (no JS) cannot. Skipped under act (browser download + DinD + `upload-artifact@v7`), so `make ci-run` does NOT exercise it — run `make e2e-browser` locally before pushing UI/bundle changes.
 - **No CSP `'unsafe-inline'`** — all styling is className + CSS-custom-property based (never inline `style`), so `script-src 'self'; style-src 'self'` (no `unsafe-inline`) is enforceable. The light/dark theme switches by toggling a `data-theme` attribute on `<html>` (which selects CSS variables defined in `src/index.css`) rather than applying inline styles — that is why the theme is CSP-safe. The `ThemeContext` default carries no colors, only the theme name + setters.
 
 ## Build & Bundle Config
@@ -111,9 +113,10 @@ GitHub Actions (`.github/workflows/ci.yml`):
 - `build` job: install -> `make build` (runs after `static-check`)
 - `test` job: install -> `make coverage-check` (runs after `static-check`, parallel with `build`)
 - `e2e` job: install -> `make e2e` (curl-based assertions against built nginx container)
+- `e2e-browser` job: install -> `pnpm exec playwright install --with-deps chromium` -> `make e2e-browser` (Playwright Chromium against the built container; uploads the HTML report as an artifact). **Skipped under act** (`if: ${{ vars.ACT != 'true' }}`) because the browser download + Docker-in-Docker + `actions/upload-artifact@v7` don't work under act — `make ci-run` does NOT exercise it; run `make e2e-browser` locally before pushing UI/bundle changes.
 - `docker` job: QEMU -> Buildx -> meta -> build-for-scan (single-arch, `load: true`) -> Trivy image scan (CRITICAL/HIGH blocking, `ignore-unfixed: true`) -> container-structure-test -> smoke test (`curl /internal/isalive`) -> multi-arch build (runs every push so arm64 cross-compile regressions surface pre-tag) -> tag-gated push + cosign keyless OIDC signing. `provenance: false` + `sbom: false` on the publish step (buildkit attestations break the GHCR "OS / Arch" UI; cosign keyless signing provides supply-chain verification).
 - `dast` job (parallel with `docker`): build single-arch image -> start -> ZAP baseline (fail-on-warn; `.zap/baseline-rules.tsv` IGNOREs ZAP rules 10049 (cache-storability informational) and 10109 (Modern Web Application informational) with rationale) -> upload report. **Job is skipped under act** (`if: ${{ vars.ACT != 'true' }}`) because ZAP requires Docker-in-Docker and `actions/upload-artifact@v7` fails under act's v4-protocol artifact server — `make ci-run` does NOT exercise this job. Failure modes that can slip through `make ci-run` and only surface on real GitHub Actions: ZAP rule additions/removals (run `make dast` locally before push), nginx response-header regressions that ZAP catches but e2e doesn't, and any `actions/upload-artifact@v7+` migration breakage. Mitigation: every nginx.conf edit MUST be followed by `make dast` locally before push.
-- `ci-pass` job (aggregation gate, `if: always()`, `needs: [changes, static-check, build, test, e2e, docker, dast]`): single check suitable for branch protection.
+- `ci-pass` job (aggregation gate, `if: always()`, `needs: [changes, static-check, build, test, e2e, e2e-browser, docker, dast]`): single check suitable for branch protection.
 - Docker images pushed to `ghcr.io` as multi-arch (`amd64` + `arm64`) with GHA build cache.
 - Permissions: `contents: read` at workflow level; `packages: write` + `id-token: write` (cosign OIDC) on docker job only; `pull-requests: read` on changes job.
 

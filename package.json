@@ -12,6 +12,7 @@
     "prettier": "prettier --ignore-path .gitignore --write 'src/**/*.{ts,tsx,js,jsx}'",
     "prettier:diff": "prettier --check 'src/**/*.{ts,tsx,js,jsx}'",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.61.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.1",

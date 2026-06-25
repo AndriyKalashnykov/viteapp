@@ -429,9 +429,54 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
+  lighthouse:
+    needs: [build, test]
+    # Skipped under act: needs Chrome (the ubuntu-latest runner ships
+    # google-chrome; act's image does not) + Docker-in-Docker for the container,
+    # and `actions/upload-artifact@v7` fails on act's v4-protocol server.
+    if: ${{ vars.ACT != 'true' }}
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+          cache-dependency-path: "**/pnpm-lock.yaml"
+
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Lighthouse CI (perf/a11y/best-practices/SEO budgets)
+        run: make lighthouse
+
+      - name: Upload Lighthouse report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lighthouse-report
+          path: .lighthouseci/
+          retention-days: 7
+
   ci-pass:
     if: always()
-    needs: [changes, static-check, build, test, e2e, e2e-browser, docker, dast]
+    needs:
+      [
+        changes,
+        static-check,
+        build,
+        test,
+        e2e,
+        e2e-browser,
+        lighthouse,
+        docker,
+        dast,
+      ]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:

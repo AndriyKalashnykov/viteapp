@@ -17,6 +17,8 @@ MERMAID_CLI_VERSION := 11.15.0
 RENOVATE_VERSION    := 43.234.0
 # renovate: datasource=npm depName=depcheck
 DEPCHECK_VERSION    := 1.4.7
+# renovate: datasource=npm depName=@lhci/cli
+LHCI_VERSION        := 0.15.1
 
 # Ensure tools installed by mise (~/.local/share/mise/shims) and ~/.local/bin
 # (corepack-managed pnpm) are on PATH for every recipe — needed inside the act
@@ -69,7 +71,7 @@ deps:
 
 #clean: @ Remove node_modules/, dist/, coverage/, and zap-output/
 clean:
-	@rm -rf node_modules/ dist/ coverage/ zap-output/ playwright-report/ test-results/
+	@rm -rf node_modules/ dist/ coverage/ zap-output/ playwright-report/ test-results/ .lighthouseci/
 
 #install: @ Install project dependencies via pnpm
 install: deps
@@ -202,6 +204,20 @@ e2e-browser: install image-build
 		docker rm -f viteapp-pw >/dev/null; \
 		exit $$EXIT
 
+#lighthouse: @ Lighthouse CI budgets (perf/a11y/best-practices/SEO) against the built container
+lighthouse: install image-build
+	@docker rm -f viteapp-lh 2>/dev/null || true
+	@docker run -d --name=viteapp-lh -p 8080:8080 $(APP_NAME):$(CURRENTTAG) >/dev/null
+	@echo "Waiting for nginx to become healthy..."
+	@end=$$(( $$(date +%s) + 30 )); \
+		while [ $$(date +%s) -lt $$end ]; do \
+			curl -fsS http://localhost:8080/internal/isalive >/dev/null 2>&1 && break; \
+			sleep 1; \
+		done
+	@npx --yes @lhci/cli@$(LHCI_VERSION) autorun --config=lighthouserc.json; EXIT=$$?; \
+		docker rm -f viteapp-lh >/dev/null; \
+		exit $$EXIT
+
 #dast: @ ZAP baseline DAST scan against the built image (mirrors CI gate, fail-on-warn)
 dast: image-build
 	@docker rm -f viteapp-test 2>/dev/null || true
@@ -282,5 +298,5 @@ renovate-validate:
 .PHONY: help deps clean install lint build test coverage-check vulncheck \
 	trivy-fs secrets check-node-alignment static-check deps-update deps-prune \
 	deps-prune-check run format format-check ci image-build image-run \
-	image-stop image-cst e2e e2e-browser dast release ci-run ci-run-tag renovate \
+	image-stop image-cst e2e e2e-browser lighthouse dast release ci-run ci-run-tag renovate \
 	renovate-validate mermaid-lint

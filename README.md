@@ -23,16 +23,16 @@ C4Context
 
 | Component        | Technology                                                  |
 | ---------------- | ----------------------------------------------------------- |
-| Language         | TypeScript 6.0 (strict mode)                                |
-| Framework        | React 19.2                                                  |
-| Build tool       | Vite 8.0 (Rolldown bundler, terser minifier)                |
-| Testing          | Vitest 4.1 + @testing-library/react 16 + jsdom + v8 coverage (80% thresholds) |
+| Language         | TypeScript 6 (strict mode)                                  |
+| Framework        | React 19                                                    |
+| Build tool       | Vite 8 (Rolldown bundler, terser minifier)                  |
+| Testing          | Vitest 4 + @testing-library/react 16 + jsdom + v8 coverage (80% thresholds) |
 | Runtime          | Node.js 24.17.0 (pinned via `.nvmrc`)                       |
-| Package manager  | pnpm 11.9 (pinned via `package.json` `packageManager`)      |
+| Package manager  | pnpm 11 (pinned via `package.json` `packageManager`)        |
 | Version manager  | mise (reads `.nvmrc`; pins act/hadolint/trivy/gitleaks/container-structure-test in `.mise.toml`) |
-| Container        | Official nginx 1.31-alpine, DIY unprivileged UID 101 (multi-arch amd64/arm64) |
+| Container        | Official nginx (alpine), DIY unprivileged UID 101 (multi-arch amd64/arm64) |
 | CI/CD            | GitHub Actions + Trivy + container-structure-test + ZAP DAST + Cosign keyless OIDC |
-| Code quality     | ESLint 10 + Prettier 3.8 + hadolint 2.14 + gitleaks 8.30 + Trivy 0.71 + mermaid-cli 11.15 |
+| Code quality     | ESLint 10 + Prettier 3 + hadolint 2 + gitleaks 8 + Trivy + mermaid-cli 11 |
 | Dependency mgmt  | Renovate (PR automerge gated by the `ci-pass` required check) |
 
 ## Quick Start

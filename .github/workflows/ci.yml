@@ -170,8 +170,25 @@ jobs:
       - name: Install dependencies
         run: make install
 
-      - name: Install Playwright browsers
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          # Keyed on the lockfile so a @playwright/test bump re-downloads the
+          # matching browser build; otherwise the ~115 MB Chromium download is
+          # skipped on every run.
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright browser + system deps
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cached browser)
+        # System apt libs live outside the cached browser dir, so install them
+        # even on a cache hit (fast — no browser download).
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
 
       - name: Browser e2e (Playwright)
         run: make e2e-browser

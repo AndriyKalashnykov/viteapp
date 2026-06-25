@@ -44,6 +44,17 @@
       "matchStrings": ["(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
       "currentValueTemplate": "{{{currentValue}}}-alpine",
       "autoReplaceStringTemplate": "{{{newVersion}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Keep the `Node.js <ver>` version shown in the README Tech Stack table in lockstep with .nvmrc + the Dockerfile, so Renovate bumps the doc prose in the SAME 'Node toolchain' PR instead of leaving it to a manual re-sync. Uses the identical docker-datasource + alpine-variant + bare-writeback pattern as the .nvmrc manager (so it resolves to the same version with the same 3-day buffer). Grouped via matchDepNames=node; pinDigests disabled below so no @sha256 is appended to the prose.",
+      "managerFilePatterns": ["/^README\\.md$/"],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "node",
+      "versioningTemplate": "node",
+      "matchStrings": ["Node\\.js (?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      "currentValueTemplate": "{{{currentValue}}}-alpine",
+      "autoReplaceStringTemplate": "{{{newVersion}}}"
     }
   ],
   "packageRules": [
@@ -98,8 +109,8 @@
       "pinDigests": false
     },
     {
-      "description": "The .nvmrc node pin resolves from the docker datasource (to stay in lockstep with the Dockerfile FROM pin), but .nvmrc must remain a BARE version string that mise/corepack/nvm can read. Disable config:best-practices' docker:pinDigests for it so Renovate never appends @sha256 and corrupts the file.",
-      "matchFileNames": [".nvmrc"],
+      "description": "The .nvmrc node pin AND the README `Node.js <ver>` prose both resolve from the docker datasource (to stay in lockstep with the Dockerfile FROM pin), but must remain BARE version strings — .nvmrc is read by mise/corepack/nvm, the README is human prose. Disable config:best-practices' docker:pinDigests for them so Renovate never appends @sha256 and corrupts the file.",
+      "matchFileNames": [".nvmrc", "README.md"],
       "matchDepNames": ["node"],
       "pinDigests": false
     },

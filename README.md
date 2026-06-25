@@ -27,7 +27,7 @@ C4Context
 | Framework        | React 19.2                                                  |
 | Build tool       | Vite 8.0 (Rolldown bundler, terser minifier)                |
 | Testing          | Vitest 4.1 + @testing-library/react 16 + jsdom + v8 coverage (80% thresholds) |
-| Runtime          | Node.js 24.17 (pinned via `.nvmrc`)                         |
+| Runtime          | Node.js 24.17.0 (pinned via `.nvmrc`)                       |
 | Package manager  | pnpm 11.9 (pinned via `package.json` `packageManager`)      |
 | Version manager  | mise (reads `.nvmrc`; pins act/hadolint/trivy/gitleaks/container-structure-test in `.mise.toml`) |
 | Container        | Official nginx 1.31-alpine, DIY unprivileged UID 101 (multi-arch amd64/arm64) |

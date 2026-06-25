@@ -84,9 +84,6 @@ body {
   min-height: 100vh;
   background-color: var(--color-bg);
   color: var(--color-fg);
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
 }
 
 h1 {
@@ -104,10 +101,6 @@ button {
   background-color: var(--color-card);
   color: var(--color-fg);
   cursor: pointer;
-  transition:
-    border-color 0.25s,
-    background-color 0.25s,
-    color 0.25s;
 }
 button:hover {
   border-color: var(--color-accent);
@@ -115,4 +108,20 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+/* Smooth theme color fade — only for users who haven't asked to reduce motion.
+   (Gating this also lets the a11y scan read settled colors under reducedMotion.) */
+@media (prefers-reduced-motion: no-preference) {
+  body {
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
+  }
+  button {
+    transition:
+      border-color 0.25s,
+      background-color 0.25s,
+      color 0.25s;
+  }
 }

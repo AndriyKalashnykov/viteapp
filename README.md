@@ -5,7 +5,7 @@
 
 # viteapp — Hardened Vite + React SPA Pipeline
 
-A Vite + React + TypeScript SPA shipped as a hardened multi-arch (`amd64`/`arm64`) nginx container, signed with cosign keyless OIDC on tag push to GHCR. The CI pipeline gates publish on Trivy filesystem + image scans (CRITICAL/HIGH blocking), container-structure-test, ZAP baseline DAST in fail-on-warn mode, 80 % Vitest coverage, 49 curl-based e2e assertions, and a Playwright Chromium browser smoke. nginx serves the SPA under strict CSP/COEP/COOP/CORP with immutable cache for hashed `/assets/*` and `no-cache` on the index + SPA fallback.
+A Vite + React + TypeScript SPA shipped as a hardened multi-arch (`amd64`/`arm64`) nginx container, signed with cosign keyless OIDC on tag push to GHCR. The CI pipeline gates publish on Trivy filesystem + image scans (CRITICAL/HIGH blocking), container-structure-test, ZAP baseline DAST in fail-on-warn mode, 80 % Vitest coverage, 49 curl-based e2e assertions, and a Playwright Chromium browser smoke with axe accessibility checks. nginx serves the SPA under strict CSP/COEP/COOP/CORP with immutable cache for hashed `/assets/*` and `no-cache` on the index + SPA fallback.
 
 ```mermaid
 C4Context
@@ -126,7 +126,7 @@ Run `make help` to see all available targets.
 | `make test`           | Run Vitest unit tests (fast, jsdom)                                         |
 | `make coverage-check` | Run Vitest with coverage thresholds (CI gate, 80%)                          |
 | `make e2e`            | End-to-end tests against the built container (health, SPA fallback, headers) |
-| `make e2e-browser`    | Playwright Chromium smoke against the built container (counter, theme toggle, CSP) |
+| `make e2e-browser`    | Playwright Chromium smoke against the built container (counter, theme toggle, axe a11y, CSP) |
 | `make dast`           | ZAP baseline DAST scan against the built image (mirrors CI gate)            |
 
 ### Code Quality
@@ -195,7 +195,7 @@ GitHub Actions runs on every push to `main`, tags `v*`, pull requests, and `work
 | **build**        | code change    | Install, Build (after static-check)                                                            |
 | **test**         | code change    | Install, `make coverage-check` (Vitest + 80% thresholds, after static-check)                   |
 | **e2e**          | code change    | Build image, `make e2e` — curl-based tests against nginx (health, SPA fallback, headers, hashed bundle, 404 fallback) |
-| **e2e-browser**  | code change    | Build image, `make e2e-browser` — Playwright Chromium against the built container (boot, counter, theme toggle + persistence, CSP). Skipped under act |
+| **e2e-browser**  | code change    | Build image, `make e2e-browser` — Playwright Chromium against the built container (boot, counter, theme toggle + persistence, axe a11y in both themes, CSP). Browser binary cached. Skipped under act |
 | **docker**       | code change    | Build-for-scan → Trivy → container-structure-test → Smoke → Multi-arch build (every push) → (on `v*` tags only) Push + Cosign signing |
 | **dast**         | code change    | Build → start → ZAP baseline (fail-on-warn; `.zap/baseline-rules.tsv` ignores informational rules) → upload report |
 | **ci-pass**      | all            | Aggregation gate (`if: always()`) — single required check for branch protection                 |

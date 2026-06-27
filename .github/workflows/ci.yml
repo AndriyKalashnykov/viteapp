@@ -172,7 +172,7 @@ jobs:
 
       - name: Cache Playwright browsers
         id: playwright-cache
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
         with:
           # Keyed on the lockfile so a @playwright/test bump re-downloads the
           # matching browser build; otherwise the ~115 MB Chromium download is
@@ -379,7 +379,7 @@ jobs:
 
       - name: Cache ZAP image
         id: cache-zap
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
         with:
           path: /tmp/zap-image.tar
           key: zap-image-${{ env.ZAP_VERSION }}-${{ runner.os }}

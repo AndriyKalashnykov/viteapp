@@ -114,6 +114,10 @@ secrets: deps
 mermaid-lint:
 	@./scripts/mermaid-lint.sh $(MERMAID_CLI_VERSION)
 
+#check-minifier-deps: @ Verify every minifier named in vite.config.ts is a declared dependency (guards the esbuild/terser optional-peer trap)
+check-minifier-deps:
+	@node scripts/check-minifier-deps.mjs
+
 #check-node-alignment: @ Verify the Node version matches across .nvmrc and Dockerfile (fails fast on Renovate split drift)
 check-node-alignment:
 	@nvmrc=$$(tr -d '[:space:]' < .nvmrc); \
@@ -125,8 +129,8 @@ check-node-alignment:
 			exit 1; \
 		fi
 
-#static-check: @ Composite quality gate (check-node-alignment, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)
-static-check: check-node-alignment format-check lint vulncheck trivy-fs secrets mermaid-lint
+#static-check: @ Composite quality gate (check-node-alignment, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)
+static-check: check-node-alignment check-minifier-deps format-check lint vulncheck trivy-fs secrets mermaid-lint
 	@echo "static-check passed."
 
 #deps-update: @ Update dependencies to latest compatible versions (pnpm update)
@@ -296,7 +300,7 @@ renovate-validate:
 	@npx --yes --package renovate@$(RENOVATE_VERSION) -- renovate-config-validator --strict renovate.json
 
 .PHONY: help deps clean install lint build test coverage-check vulncheck \
-	trivy-fs secrets check-node-alignment static-check deps-update deps-prune \
+	trivy-fs secrets check-node-alignment check-minifier-deps static-check deps-update deps-prune \
 	deps-prune-check run format format-check ci image-build image-run \
 	image-stop image-cst e2e e2e-browser lighthouse dast release ci-run ci-run-tag renovate \
 	renovate-validate mermaid-lint

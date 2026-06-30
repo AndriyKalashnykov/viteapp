@@ -17,7 +17,7 @@ UpdateElementStyle("person",          $fontColor="#FFFFFF", $bgColor="#0F766E", 
 UpdateElementStyle("system",          $fontColor="#FFFFFF", $bgColor="#2563EB", $borderColor="#1E3A8A")
 UpdateElementStyle("external_system", $fontColor="#FFFFFF", $bgColor="#64748B", $borderColor="#334155")
 
-title System Context — viteapp
+title System Context — viteapp (regen self-heal probe)
 
 Person(user, "End User", "Loads the SPA in a browser over HTTPS")
 System(spa, "viteapp", "Hardened Vite + React + TypeScript SPA served by unprivileged nginx (UID 101) under strict CSP/COEP/COOP/CORP")

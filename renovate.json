@@ -55,6 +55,14 @@
       "matchStrings": ["Node\\.js (?<currentValue>\\d+\\.\\d+\\.\\d+)"],
       "currentValueTemplate": "{{{currentValue}}}-alpine",
       "autoReplaceStringTemplate": "{{{newVersion}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the C4-PlantUML !include version pinned in docs/diagrams/*.puml. The pinned `v<ver>` in the raw.githubusercontent.com URL is a version literal no built-in manager covers, so without this it silently rots while every other tool pin in the repo is Renovate-tracked. datasource=github-tags on plantuml-stdlib/C4-PlantUML; the matched tag is written back into the URL. A bump changes the .puml source, which the CI `code` paths-filter routes to static-check → diagrams-check (the render drift gate), so a render-affecting bump fails RED until the committed PNG is regenerated with `make diagrams`.",
+      "managerFilePatterns": ["/^docs/diagrams/.*\\.puml$/"],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "plantuml-stdlib/C4-PlantUML",
+      "matchStrings": ["raw\\.githubusercontent\\.com/plantuml-stdlib/C4-PlantUML/(?<currentValue>v[0-9.]+)/"]
     }
   ],
   "packageRules": [

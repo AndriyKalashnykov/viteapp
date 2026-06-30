@@ -1,0 +1,90 @@
+# Auto-regenerate committed PlantUML PNGs on Renovate PRs that bump a
+# render-affecting version (the C4-PlantUML `!include` in docs/diagrams/*.puml,
+# or PLANTUML_VERSION in the Makefile). Renovate (Mend Cloud) cannot run
+# `make diagrams`, so without this every such bump opens a PR that `diagrams-check`
+# fails on forever (the committed PNG drifts from the bumped source) and never
+# automerges. This workflow renders the PNG, commits it back to the PR head, and
+# re-fires the gating `ci.yml` on the new SHA so the PR can go green + automerge,
+# hands-off. See /architecture-diagrams + /renovate "customManager whose bump
+# drives a committed-artifact regen" and /ci-workflow
+# "GITHUB_TOKEN anti-recursion + the regen-and-commit-back pattern".
+name: diagram-regen
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "docs/diagrams/**/*.puml"
+      - "Makefile" # carries PLANTUML_VERSION (a bump forces a re-render via the stamp)
+
+permissions:
+  contents: write # push the regenerated PNG to the PR branch
+  actions: write # gh workflow run (re-fire ci.yml) — NOT pull-requests: write
+
+concurrency:
+  group: diagram-regen-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  regen:
+    # Only Renovate's own PRs. A fork PR gets a read-only GITHUB_TOKEN anyway
+    # (so the push would fail harmlessly), but the author gate makes the scope
+    # explicit and keeps the privileged push off every non-bot PR.
+    if: github.event.pull_request.user.login == 'renovate[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 2
+
+      # Recursion guard: belt-and-suspenders. A GITHUB_TOKEN push does NOT fire
+      # `pull_request` (anti-recursion), so this workflow won't re-trigger itself
+      # — but if the push credential is ever swapped for a PAT/App token, this
+      # stops an infinite regen loop. Skip when the tip is already our own commit.
+      - id: guard
+        run: |
+          last_author=$(git log -1 --format='%an')
+          if [ "$last_author" = "github-actions[bot]" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # `make diagrams` renders via the pinned plantuml/plantuml Docker image
+      # (PLANTUML_VERSION in the Makefile) — the same renderer ci.yml uses, so
+      # the output is byte-identical to what diagrams-check expects.
+      - name: Regenerate diagrams
+        if: steps.guard.outputs.skip != 'true'
+        run: make diagrams
+
+      - name: Detect drift
+        if: steps.guard.outputs.skip != 'true'
+        id: drift
+        run: |
+          if git diff --quiet -- docs/diagrams/out; then
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit + push regenerated PNG and re-trigger CI
+        if: steps.guard.outputs.skip != 'true' && steps.drift.outputs.drift == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/diagrams/out
+          git commit -m "chore(diagrams): regenerate rendered PNGs for the bumped renderer/stdlib"
+          git push origin "HEAD:${PR_HEAD_REF}"
+          # The GITHUB_TOKEN push above will NOT trigger ci.yml (anti-recursion).
+          # workflow_dispatch IS in the exception list, so explicitly re-fire the
+          # gate on the new head SHA — this produces the `ci-pass` required check
+          # the ruleset needs before Renovate can automerge.
+          gh workflow run ci.yml --ref "${PR_HEAD_REF}"

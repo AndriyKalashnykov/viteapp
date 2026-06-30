@@ -466,6 +466,10 @@ jobs:
         with:
           name: lighthouse-report
           path: .lighthouseci/
+          # .lighthouseci is a hidden dir (leading dot); upload-artifact@v4+
+          # excludes hidden paths by default, so without this the report upload
+          # finds no files. LHCI writes its filesystem report here (lighthouserc.json).
+          include-hidden-files: true
           retention-days: 7
 
   ci-pass:

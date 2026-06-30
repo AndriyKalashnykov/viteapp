@@ -1,13 +1,23 @@
-# Auto-regenerate committed PlantUML PNGs on Renovate PRs that bump a
-# render-affecting version (the C4-PlantUML `!include` in docs/diagrams/*.puml,
-# or PLANTUML_VERSION in the Makefile). Renovate (Mend Cloud) cannot run
-# `make diagrams`, so without this every such bump opens a PR that `diagrams-check`
-# fails on forever (the committed PNG drifts from the bumped source) and never
-# automerges. This workflow renders the PNG, commits it back to the PR head, and
-# re-fires the gating `ci.yml` on the new SHA so the PR can go green + automerge,
-# hands-off. See /architecture-diagrams + /renovate "customManager whose bump
-# drives a committed-artifact regen" and /ci-workflow
-# "GITHUB_TOKEN anti-recursion + the regen-and-commit-back pattern".
+# Regenerate the committed PlantUML PNGs on a PR whose render-affecting source
+# changed (the C4-PlantUML `!include` in docs/diagrams/*.puml, or PLANTUML_VERSION
+# in the Makefile) — because Renovate (Mend Cloud) cannot run `make diagrams`, so a
+# bump drifts the committed PNG from source and `diagrams-check` fails.
+#
+# This workflow renders + commits the corrected PNG back to the PR head. It does
+# NOT auto-merge: `main` is gated by a Repository Ruleset, and a GITHUB_TOKEN
+# commit-back push is held `action_required` (anti-recursion) — its CI does not
+# run in the PR's check rollup, so the PR stays BLOCKED until a human acts.
+# Finishing the merge is therefore MANUAL (by design — see /ci-workflow
+# "workflow_dispatch re-trigger does NOT unblock a Repository-RULESET-gated PR"
+# for why a hands-off path needs an App/PAT token, which we deliberately don't use):
+#   - approve the held CI run on the PR (Actions tab -> "Approve and run"), OR
+#   - locally `make diagrams && git commit && git push` (a non-bot push triggers a
+#     normal CI run in the PR context, which unblocks + merges).
+# The PNG regeneration itself is automated; only the final approve/merge is manual.
+#
+# Triggers: Renovate's own render-affecting bump PRs, OR any PR a maintainer labels
+# `regen-diagrams` (the on-demand "force-regenerate" button — only write-access
+# users can apply labels).
 name: diagram-regen
 
 on:
@@ -19,7 +29,6 @@ on:
 
 permissions:
   contents: write # push the regenerated PNG to the PR branch
-  actions: write # gh workflow run (re-fire ci.yml) — NOT pull-requests: write
 
 concurrency:
   group: diagram-regen-${{ github.event.pull_request.number }}
@@ -27,11 +36,9 @@ concurrency:
 
 jobs:
   regen:
-    # Renovate's own bump PRs (the automated path), OR any PR a maintainer
-    # labels `regen-diagrams` (a manual "force-regenerate the committed PNGs"
-    # button — only write-access users can apply labels, so no added attack
-    # surface). A fork PR gets a read-only GITHUB_TOKEN anyway (the push would
-    # fail harmlessly), and the `labeled` path still requires the PR diff to
+    # Renovate's own bump PRs (auto-regen the PNG), OR any PR a maintainer labels
+    # `regen-diagrams`. A fork PR gets a read-only GITHUB_TOKEN anyway (the push
+    # would fail harmlessly), and the `labeled` path still requires the PR diff to
     # touch a diagram source (the `paths:` filter above), so labeling a
     # non-diagram PR is a no-op.
     if: >-
@@ -47,10 +54,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 2
 
-      # Recursion guard: belt-and-suspenders. A GITHUB_TOKEN push does NOT fire
-      # `pull_request` (anti-recursion), so this workflow won't re-trigger itself
-      # — but if the push credential is ever swapped for a PAT/App token, this
-      # stops an infinite regen loop. Skip when the tip is already our own commit.
+      # Recursion guard: a GITHUB_TOKEN push does NOT fire `pull_request`
+      # (anti-recursion), so this workflow won't re-trigger itself — but the guard
+      # keeps it correct if the commit-back is ever swapped to a PAT/App token.
+      # Skip when the branch tip is already our own commit.
       - id: guard
         run: |
           last_author=$(git log -1 --format='%an')
@@ -77,10 +84,9 @@ jobs:
             echo "drift=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Commit + push regenerated PNG and re-trigger CI
+      - name: Commit + push regenerated PNG
         if: steps.guard.outputs.skip != 'true' && steps.drift.outputs.drift == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
@@ -89,8 +95,8 @@ jobs:
           git add docs/diagrams/out
           git commit -m "chore(diagrams): regenerate rendered PNGs for the bumped renderer/stdlib"
           git push origin "HEAD:${PR_HEAD_REF}"
-          # The GITHUB_TOKEN push above will NOT trigger ci.yml (anti-recursion).
-          # workflow_dispatch IS in the exception list, so explicitly re-fire the
-          # gate on the new head SHA — this produces the `ci-pass` required check
-          # the ruleset needs before Renovate can automerge.
-          gh workflow run ci.yml --ref "${PR_HEAD_REF}"
+          # NOTE: this GITHUB_TOKEN push is held `action_required` under the Ruleset
+          # and does NOT run CI in the PR's rollup — so the PR stays BLOCKED. Finish
+          # the merge manually: approve the held CI run, or push a local
+          # `make diagrams` commit (a non-bot push runs CI in PR context). See the
+          # header comment.

@@ -196,6 +196,8 @@ GitHub Actions runs on every push to `main`, tags `v*`, pull requests, and `work
 | **dast**         | code change    | Build → start → ZAP baseline (fail-on-warn; `.zap/baseline-rules.tsv` ignores informational rules) → upload report |
 | **ci-pass**      | all            | Aggregation gate (`if: always()`) — single required check for branch protection                 |
 
+A [diagram-regen workflow](.github/workflows/diagram-regen.yml) regenerates the committed C4 PNG on a render-affecting Renovate bump (the C4-PlantUML `!include` version or `PLANTUML_VERSION`) or on demand via the `regen-diagrams` label — because Renovate can't run `make diagrams` itself. It commits the corrected PNG back; the merge is finished manually (the Repository Ruleset blocks the bot's commit-back CI).
+
 A weekly [cleanup workflow](.github/workflows/cleanup-runs.yml) deletes workflow runs older than 7 days (keeping a minimum of 5).
 
 Docker images are pushed to `ghcr.io` as multi-arch (`linux/amd64` + `linux/arm64`) with GHA build cache.
@@ -229,4 +231,4 @@ cosign verify ghcr.io/andriykalashnykov/viteapp:<tag> \
 
 No additional secrets are required. The workflow uses only `GITHUB_TOKEN` (auto-provided by GitHub Actions) for GHCR login and OIDC token minting (cosign keyless signing).
 
-[Renovate](https://docs.renovatebot.com/) keeps dependencies up to date with platform automerge enabled.
+[Renovate](https://docs.renovatebot.com/) keeps dependencies up to date and merges them via PR automerge once the `ci-pass` check passes (`automergeType: pr`; platform automerge is disabled to avoid the native auto-merge registration race that can merge a red bump before the check registers).

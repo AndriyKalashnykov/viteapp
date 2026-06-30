@@ -13,6 +13,8 @@ NODE_VERSION := $(shell cat .nvmrc 2>/dev/null || echo 24)
 ZAP_VERSION         := 2.17.0
 # renovate: datasource=docker depName=minlag/mermaid-cli
 MERMAID_CLI_VERSION := 11.16.0
+# renovate: datasource=docker depName=plantuml/plantuml
+PLANTUML_VERSION    := 1.2026.6
 # renovate: datasource=npm depName=renovate
 RENOVATE_VERSION    := 43.237.1
 # renovate: datasource=npm depName=depcheck
@@ -114,6 +116,38 @@ secrets: deps
 mermaid-lint:
 	@./scripts/mermaid-lint.sh $(MERMAID_CLI_VERSION)
 
+# === Architecture diagrams (PlantUML C4) ===
+# Source .puml committed under docs/diagrams/; rendered PNG committed under
+# docs/diagrams/out/ so github.com shows them with no build step. Rendered via
+# the pinned plantuml/plantuml Docker image for byte-reproducibility.
+DIAGRAM_DIR   := docs/diagrams
+DIAGRAM_SRC   := $(wildcard $(DIAGRAM_DIR)/*.puml)
+DIAGRAM_OUT   := $(patsubst $(DIAGRAM_DIR)/%.puml,$(DIAGRAM_DIR)/out/%.png,$(DIAGRAM_SRC))
+# Version-stamped sentinel: a PLANTUML_VERSION bump changes the stamp's NAME, so
+# the old stamp no longer satisfies the prereq and every PNG re-renders — catches
+# the "renderer bumped but PNG not regenerated" drift the .puml mtime check misses.
+DIAGRAM_STAMP := $(DIAGRAM_DIR)/out/.plantuml-$(PLANTUML_VERSION).stamp
+
+#diagrams: @ Render PlantUML architecture diagrams (docs/diagrams/*.puml) to PNG
+diagrams: $(DIAGRAM_OUT)
+
+$(DIAGRAM_DIR)/out/%.png: $(DIAGRAM_DIR)/%.puml $(DIAGRAM_STAMP)
+	@PLANTUML_VERSION=$(PLANTUML_VERSION) ./scripts/render-diagrams.sh $<
+
+$(DIAGRAM_STAMP):
+	@mkdir -p $(DIAGRAM_DIR)/out
+	@rm -f $(DIAGRAM_DIR)/out/.plantuml-*.stamp
+	@touch $@
+
+#diagrams-clean: @ Remove rendered diagram artefacts
+diagrams-clean:
+	@rm -rf $(DIAGRAM_DIR)/out
+
+#diagrams-check: @ Verify committed diagrams match current PlantUML source (CI drift gate)
+diagrams-check: diagrams
+	@git diff --exit-code -- $(DIAGRAM_DIR)/out || \
+		{ echo "ERROR: diagram source changed but rendered PNG not updated. Run 'make diagrams' and commit."; exit 1; }
+
 #check-minifier-deps: @ Verify every minifier named in vite.config.ts is a declared dependency (guards the esbuild/terser optional-peer trap)
 check-minifier-deps:
 	@node scripts/check-minifier-deps.mjs
@@ -129,8 +163,8 @@ check-node-alignment:
 			exit 1; \
 		fi
 
-#static-check: @ Composite quality gate (check-node-alignment, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)
-static-check: check-node-alignment check-minifier-deps format-check lint vulncheck trivy-fs secrets mermaid-lint
+#static-check: @ Composite quality gate (check-node-alignment, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint, diagrams-check)
+static-check: check-node-alignment check-minifier-deps format-check lint vulncheck trivy-fs secrets mermaid-lint diagrams-check
 	@echo "static-check passed."
 
 #deps-update: @ Update dependencies to latest compatible versions (pnpm update)
@@ -303,4 +337,4 @@ renovate-validate:
 	trivy-fs secrets check-node-alignment check-minifier-deps static-check deps-update deps-prune \
 	deps-prune-check run format format-check ci image-build image-run \
 	image-stop image-cst e2e e2e-browser lighthouse dast release ci-run ci-run-tag renovate \
-	renovate-validate mermaid-lint
+	renovate-validate mermaid-lint diagrams diagrams-clean diagrams-check

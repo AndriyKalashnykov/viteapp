@@ -18,6 +18,9 @@ test-results
 /playwright/.cache
 *.local
 
+# PlantUML diagram render sentinel (version-stamped re-render trigger; not tracked)
+docs/diagrams/out/.plantuml-*.stamp
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

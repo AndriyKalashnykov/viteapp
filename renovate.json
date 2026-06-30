@@ -103,7 +103,7 @@
       "groupName": "Makefile tools"
     },
     {
-      "description": "Disable digest pinning for the Makefile docker-datasource dev tool (mermaid-cli). config:best-practices' docker:pinDigests otherwise generates a pinDigest update that collides with the version bump in the Makefile-tools branch and silently drops the bump. Scoped by file+datasource (NOT matchManagers, which surfaces as `regex` and can void the AND-combined rule). mermaid-cli is a lint tool, not production runtime; production digests (Dockerfile FROM) are untouched.",
+      "description": "Disable digest pinning for the Makefile docker-datasource dev tools (mermaid-cli, plantuml/plantuml). config:best-practices' docker:pinDigests otherwise generates a pinDigest update that collides with the version bump in the Makefile-tools branch and silently drops the bump. Scoped by file+datasource (NOT matchManagers, which surfaces as `regex` and can void the AND-combined rule) so it covers every Makefile docker pin. These are lint/render tools, not production runtime; production digests (Dockerfile FROM) are untouched.",
       "matchFileNames": ["Makefile"],
       "matchDatasources": ["docker"],
       "pinDigests": false

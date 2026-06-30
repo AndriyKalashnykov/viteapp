@@ -37,6 +37,11 @@ jobs:
             code:
               - '!(**.md|docs/**|specs/**|LICENSE|.gitignore|.claudeignore|.claude/**|benchmarks/**|**.png|**.jpg|**.gif|**.svg)'
               - 'CLAUDE.md'
+              # Re-include diagram sources + rendered PNGs (otherwise excluded by
+              # docs/** and **.png above) so `make diagrams-check` (in static-check)
+              # runs on a .puml edit or PNG change — without this a diagram-source
+              # change is classified docs-only and the drift gate is skipped.
+              - 'docs/diagrams/**'
 
   static-check:
     needs: [changes]

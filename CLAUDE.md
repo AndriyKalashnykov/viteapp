@@ -11,6 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 make deps              # Install mise + Node + pnpm + binary tools (act, hadolint, trivy, gitleaks, container-structure-test) from .mise.toml
 make install           # pnpm install (runs deps first)
 make check-node-alignment # Verify Node version matches across .nvmrc and Dockerfile (Renovate split-drift guard)
+make check-minifier-deps # Verify every minifier named in vite.config.ts is a declared dependency (esbuild/terser optional-peer guard)
 make lint              # ESLint + hadolint + shell-script executable-bit guard
 make build             # TypeScript check + Vite production build (runs install first)
 make test              # Run Vitest tests
@@ -22,7 +23,9 @@ make vulncheck         # Check for known vulnerabilities in dependencies (modera
 make trivy-fs          # Trivy filesystem scan (vuln, secret, misconfig)
 make secrets           # Scan repository for leaked secrets via gitleaks
 make mermaid-lint      # Parse every ```mermaid block in README.md / CLAUDE.md via pinned mermaid-cli (script: scripts/mermaid-lint.sh)
-make static-check      # Composite quality gate (check-node-alignment, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)
+make diagrams          # Render PlantUML architecture diagrams (docs/diagrams/*.puml) to PNG via pinned plantuml/plantuml (script: scripts/render-diagrams.sh)
+make diagrams-check    # Verify committed diagram PNGs match current PlantUML source (CI drift gate; part of static-check)
+make static-check      # Composite quality gate (check-node-alignment, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint, diagrams-check)
 make ci                # Full local CI pipeline (install, static-check, coverage-check, build, deps-prune-check)
 make ci-run            # Run GitHub Actions workflow locally using act (push event)
 make ci-run-tag        # Run CI with a tag event via act (exercises docker job + DAST gate)
@@ -110,8 +113,8 @@ Nginx (`nginx/nginx.conf`):
 GitHub Actions (`.github/workflows/ci.yml`):
 
 - Triggers: push to `main`, tags `v*`, pull requests, `workflow_call` (reusable). No trigger-level `paths-ignore` — uses a `changes` detector job (`dorny/paths-filter`) so doc-only changes skip heavy work without deadlocking Repository Rulesets that require `ci-pass`.
-- `changes` job: emits `outputs.code` (true on tag push or any non-doc file change). All heavy jobs gate on `if: needs.changes.outputs.code == 'true'`.
-- `static-check` job: checkout (`fetch-depth: 0` for gitleaks history) -> pnpm/action-setup -> setup-node (with pnpm cache) -> install -> `make static-check` (check-node-alignment + format-check + lint + vulncheck + trivy-fs + secrets + mermaid-lint, composite quality gate)
+- `changes` job: emits `outputs.code` (true on tag push or any non-doc file change). `docs/**` is treated as non-code EXCEPT `docs/diagrams/**`, which is re-included so a `.puml`/rendered-PNG change runs `static-check` → `diagrams-check` (the drift gate) instead of being skipped as docs-only. All heavy jobs gate on `if: needs.changes.outputs.code == 'true'`.
+- `static-check` job: checkout (`fetch-depth: 0` for gitleaks history) -> pnpm/action-setup -> setup-node (with pnpm cache) -> install -> `make static-check` (check-node-alignment + check-minifier-deps + format-check + lint + vulncheck + trivy-fs + secrets + mermaid-lint + diagrams-check, composite quality gate)
 - `build` job: install -> `make build` (runs after `static-check`)
 - `test` job: install -> `make coverage-check` (runs after `static-check`, parallel with `build`)
 - `e2e` job: install -> `make e2e` (curl-based assertions against built nginx container)
@@ -140,8 +143,10 @@ Cleanup (`.github/workflows/cleanup-runs.yml`):
 - **Node toolchain (`.nvmrc` + Dockerfile `FROM node`):** both pins are tracked by Renovate's **docker** datasource — the Dockerfile via the built-in `dockerfile` manager, and `.nvmrc` via a `custom.regex` manager (the built-in `nvm` manager is **disabled** in `enabledManagers`). They share the "Node toolchain" group (matched by `depName: node`) so they bump together. Resolving both from the *same* datasource is what keeps them aligned: the `nvm` manager's `node-version` datasource follows nodejs.org, which leads Docker Hub by hours-to-a-day on each Node release — so the old `nvm`+`dockerfile` grouping opened PRs with `.nvmrc` ahead of the Dockerfile, failing `make check-node-alignment` until Docker Hub caught up. With both on the docker datasource, the grouped PR only ever proposes a version Docker Hub has actually published. `.nvmrc` carries `pinDigests: false` so it stays a bare version mise/corepack can read. Enforced by `make check-node-alignment` (part of `static-check`). The `Node.js <ver>` string in the README Tech Stack table is **also** tracked by a third `custom.regex` manager (same docker-datasource + alpine-variant + bare-writeback pattern, `pinDigests: false`), grouped into the same "Node toolchain" PR — so the doc version bumps in lockstep with `.nvmrc`/Dockerfile and never needs a manual re-sync.
 - **Prettier:** uses defaults (no config file)
 - **Vitest:** unit tests with `@testing-library/react` and `jest-dom` matchers; coverage via `@vitest/coverage-v8` with thresholds; config in `vite.config.ts`; setup in `src/test/setup.ts`
-- **Mermaid lint:** every `` ```mermaid `` block in README.md / CLAUDE.md is parsed by pinned `minlag/mermaid-cli` (`make mermaid-lint`, script at `scripts/mermaid-lint.sh`); part of `make static-check` composite gate
+- **Mermaid lint:** every `` ```mermaid `` block in README.md / CLAUDE.md is parsed by pinned `minlag/mermaid-cli` (`make mermaid-lint`, script at `scripts/mermaid-lint.sh`); part of `make static-check` composite gate. Currently no Mermaid blocks exist (the architecture hero migrated to PlantUML, below) — the gate stays wired and self-skips with "no mermaid blocks found", ready for any future inline sequence/flow diagram
+- **Architecture diagrams (PlantUML C4):** the README hero is a C4 Context diagram authored in `docs/diagrams/c4-context.puml` (C4-PlantUML `!include` pinned to `v2.11.0`, modern-flat theme) and rendered to a committed PNG under `docs/diagrams/out/` via the pinned `plantuml/plantuml` Docker image (`PLANTUML_VERSION` in the Makefile, Renovate-tracked). `make diagrams` renders; `make diagrams-check` (a `git diff --exit-code` drift gate in `static-check`) fails if the committed PNG diverges from current source. A version-stamped sentinel (`docs/diagrams/out/.plantuml-*.stamp`, gitignored) forces a full re-render on a `PLANTUML_VERSION` bump so a renderer bump can't ship stale PNGs. Rendering is skipped under act (DinD bind-mount), same as mermaid-lint
 - **Shell-script executable-bit guard:** `make lint` runs `find scripts -name '*.sh' -not -executable` so subagent-created scripts (Write tool defaults to mode 0644) don't ship with the executable bit missing.
+- **Minifier-deps guard:** `make check-minifier-deps` asserts every minifier named in `vite.config.ts` (terser, esbuild) is a declared dependency, guarding the Vite optional-peer trap where a config string references a minifier that isn't installed; part of `make static-check` composite gate.
 
 ## Upgrade Backlog
 
@@ -160,6 +165,6 @@ Use the following skills when working on related files:
 | `renovate.json`                  | `/renovate`    |
 | `README.md`                      | `/readme`      |
 | `.github/workflows/*.{yml,yaml}` | `/ci-workflow` |
-| `README.md` / `CLAUDE.md` (Mermaid blocks) | `/architecture-diagrams` |
+| `docs/diagrams/*.puml`, README/CLAUDE Mermaid blocks | `/architecture-diagrams` |
 
 When spawning subagents, always pass conventions from the respective skill into the agent's prompt.

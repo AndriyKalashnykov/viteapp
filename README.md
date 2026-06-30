@@ -5,21 +5,11 @@
 
 # viteapp — Hardened Vite + React SPA Pipeline
 
-A Vite + React + TypeScript SPA shipped as a hardened multi-arch (`amd64`/`arm64`) nginx container, signed with cosign keyless OIDC on tag push to GHCR. The CI pipeline gates publish on Trivy filesystem + image scans (CRITICAL/HIGH blocking), container-structure-test, ZAP baseline DAST in fail-on-warn mode, 80 % Vitest coverage, 49 curl-based e2e assertions, a Playwright Chromium browser smoke with axe accessibility checks, and a Lighthouse CI budget (performance / accessibility / best-practices / SEO). nginx serves the SPA under strict CSP/COEP/COOP/CORP with immutable cache for hashed `/assets/*` and `no-cache` on the index + SPA fallback.
+A Vite + React + TypeScript SPA delivered as a hardened multi-arch (`amd64`/`arm64`) nginx container, signed with cosign keyless OIDC on tag push to GHCR. The CI pipeline gates publish on Trivy filesystem + image scans (CRITICAL/HIGH blocking), container-structure-test, ZAP baseline DAST in fail-on-warn mode, 80 % Vitest coverage, 49 curl-based e2e assertions, a Playwright Chromium browser smoke with axe accessibility checks, and a Lighthouse CI budget (performance / accessibility / best-practices / SEO). nginx serves the SPA under strict CSP/COEP/COOP/CORP with immutable cache for hashed `/assets/*` and `no-cache` on the index + SPA fallback.
 
-```mermaid
-C4Context
-  title System Context — viteapp
+<p align="center"><img src="docs/diagrams/out/c4-context.png" alt="System Context — viteapp (C4 Context diagram: End User loads the SPA; GitHub Actions CI publishes a cosign-signed image to GHCR; GHCR distributes the image)" width="900"></p>
 
-  Person(user, "End User", "Loads the SPA in a browser over HTTPS")
-  System(spa, "viteapp", "Hardened Vite + React + TypeScript SPA served by unprivileged nginx (UID 101) with strict CSP/COEP")
-  System_Ext(ci, "GitHub Actions CI", "Trivy + container-structure-test + ZAP DAST gates; cosign keyless OIDC signing on tag push")
-  System_Ext(ghcr, "GHCR", "Multi-arch (amd64+arm64) OCI registry — image digests cosign-signed")
-
-  Rel(user, spa, "Loads", "HTTPS (HTML, hashed JS/CSS bundles)")
-  Rel(ci, ghcr, "Publishes signed image", "OCI push + cosign sign")
-  Rel(ghcr, spa, "Distributes image", "docker pull on deploy")
-```
+<p align="center"><sub>C4 Context — source: <a href="docs/diagrams/c4-context.puml"><code>docs/diagrams/c4-context.puml</code></a>; regenerate with <code>make diagrams</code></sub></p>
 
 | Component        | Technology                                                  |
 | ---------------- | ----------------------------------------------------------- |
@@ -33,6 +23,7 @@ C4Context
 | Container        | Official nginx (alpine), DIY unprivileged UID 101 (multi-arch amd64/arm64) |
 | CI/CD            | GitHub Actions + Trivy + container-structure-test + ZAP DAST + Cosign keyless OIDC |
 | Code quality     | ESLint 10 + Prettier 3 + hadolint 2 + gitleaks 8 + Trivy + mermaid-cli 11 |
+| Diagrams         | PlantUML + C4-PlantUML (rendered via pinned `plantuml/plantuml` Docker image, committed PNG + drift gate) |
 | Dependency mgmt  | Renovate (PR automerge gated by the `ci-pass` required check) |
 
 ## Quick Start
@@ -53,7 +44,7 @@ make run       # start Vite dev server with HMR
 | [mise](https://mise.jdx.dev/)                  | latest  | Portfolio version manager — auto-installed by `make deps`; reads `.nvmrc` + `.mise.toml` |
 | [Node.js](https://nodejs.org/)                 | 24+     | JavaScript runtime — installed by mise from `.nvmrc` |
 | [pnpm](https://pnpm.io/)                       | 11.9+   | Package manager — installed by `make deps` via corepack (version pinned in `package.json`) |
-| [Docker](https://www.docker.com/)              | latest  | Container builds (optional) |
+| [Docker](https://www.docker.com/)              | latest  | Container builds + `make diagrams` (PlantUML render), `make mermaid-lint` (optional) |
 | [Git](https://git-scm.com/)                    | latest  | Version control             |
 
 `make deps` also installs the binary tools pinned in `.mise.toml`: [act](https://github.com/nektos/act) (local CI runs), [hadolint](https://github.com/hadolint/hadolint) (Dockerfile lint), [trivy](https://github.com/aquasecurity/trivy) (CVE scan), [gitleaks](https://github.com/gitleaks/gitleaks) (secret scan), and [container-structure-test](https://github.com/GoogleContainerTools/container-structure-test) (image structure assertions).
@@ -135,12 +126,15 @@ Run `make help` to see all available targets.
 | Target              | Description                                                       |
 | ------------------- | ----------------------------------------------------------------- |
 | `make check-node-alignment` | Verify the Node version matches across `.nvmrc` and Dockerfile (Renovate split-drift guard) |
+| `make check-minifier-deps` | Verify every minifier named in `vite.config.ts` is a declared dependency (esbuild/terser optional-peer guard) |
 | `make lint`         | Run ESLint and hadolint on source files                           |
 | `make vulncheck`    | Check for known vulnerabilities in dependencies (moderate+)       |
 | `make trivy-fs`     | Trivy filesystem scan (vuln, secret, misconfig)                   |
 | `make secrets`      | Scan repository for leaked secrets via gitleaks                   |
-| `make static-check` | Composite quality gate (check-node-alignment, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint) |
+| `make static-check` | Composite quality gate (check-node-alignment, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint, diagrams-check) |
 | `make mermaid-lint` | Parse every ` ```mermaid ` fenced block via pinned `minlag/mermaid-cli`   |
+| `make diagrams`     | Render PlantUML architecture diagrams (`docs/diagrams/*.puml`) to PNG via pinned `plantuml/plantuml` |
+| `make diagrams-check` | Verify committed diagram PNGs match current PlantUML source (CI drift gate) |
 | `make format`       | Format source files with Prettier                                 |
 | `make format-check` | Check formatting without writing                                  |
 
@@ -191,8 +185,8 @@ GitHub Actions runs on every push to `main`, tags `v*`, pull requests, and `work
 
 | Job              | Triggers       | Steps                                                                                          |
 | ---------------- | -------------- | ---------------------------------------------------------------------------------------------- |
-| **changes**      | push, PR, tags | `dorny/paths-filter` — sets `outputs.code` true when non-doc files change. Tag push always true |
-| **static-check** | code change    | Install, `make static-check` (check-node-alignment, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint)  |
+| **changes**      | push, PR, tags | `dorny/paths-filter` — sets `outputs.code` true when non-doc files change (incl. `docs/diagrams/**` so the diagram drift gate runs). Tag push always true |
+| **static-check** | code change    | Install, `make static-check` (check-node-alignment, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint, diagrams-check)  |
 | **build**        | code change    | Install, Build (after static-check)                                                            |
 | **test**         | code change    | Install, `make coverage-check` (Vitest + 80% thresholds, after static-check)                   |
 | **e2e**          | code change    | Build image, `make e2e` — curl-based tests against nginx (health, SPA fallback, headers, hashed bundle, 404 fallback) |

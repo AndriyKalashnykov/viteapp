@@ -266,6 +266,7 @@ dast: image-build
 			curl -fsS http://localhost:8080/internal/isalive >/dev/null 2>&1 && break; \
 			sleep 1; \
 		done
+	@rm -rf zap-output 2>/dev/null || docker run --rm --user 0 -v "$(PWD):/work" -w /work --entrypoint rm ghcr.io/zaproxy/zaproxy:$(ZAP_VERSION) -rf zap-output
 	@mkdir -p zap-output && chmod 777 zap-output
 	@echo "DAST report will be written to: $(PWD)/zap-output/zap-report.html"
 	@docker run --rm --network host \

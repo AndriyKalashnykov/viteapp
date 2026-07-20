@@ -163,8 +163,12 @@ check-node-alignment:
 			exit 1; \
 		fi
 
-#static-check: @ Composite quality gate (check-node-alignment, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint, diagrams-check)
-static-check: check-node-alignment check-minifier-deps format-check lint vulncheck trivy-fs secrets mermaid-lint diagrams-check
+#check-dockerfile-stage: @ Assert ci.yml's no-cache-filters matches the Dockerfile's final stage (makes the apk-upgrade fix fail-closed)
+check-dockerfile-stage:
+	@./scripts/check-dockerfile-stage.sh
+
+#static-check: @ Composite quality gate (check-node-alignment, check-dockerfile-stage, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint, diagrams-check)
+static-check: check-node-alignment check-dockerfile-stage check-minifier-deps format-check lint vulncheck trivy-fs secrets mermaid-lint diagrams-check
 	@echo "static-check passed."
 
 #deps-update: @ Update dependencies to latest compatible versions (pnpm update)
@@ -198,8 +202,17 @@ ci: install static-check coverage-check build deps-prune-check
 	@echo "CI pipeline passed."
 
 #image-build: @ Build Docker image
+# --no-cache-filter server: the `server` stage's `apk upgrade` keys on (command
+# string + PINNED parent digest), so its cache entry never expires while the
+# Alpine index moves daily — a warm local daemon replays an unpatched layer just
+# as CI's gha cache did. Mirrors `no-cache-filters: server` in ci.yml, and is
+# what makes `make image-apk-check` meaningful on a developer machine.
 image-build: build
-	@docker buildx build --load -t $(APP_NAME):$(CURRENTTAG) .
+	@docker buildx build --no-cache-filter server --load -t $(APP_NAME):$(CURRENTTAG) .
+
+#image-apk-check: @ Assert the image's apk upgrade layer actually ran (catches a replayed cache layer)
+image-apk-check: image-build
+	@./scripts/check-apk-upgraded.sh $(APP_NAME):$(CURRENTTAG)
 
 #image-run: @ Run Docker container on port 8080
 image-run: image-stop

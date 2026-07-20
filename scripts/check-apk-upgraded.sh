@@ -58,25 +58,40 @@ fi
 
 echo "Checking that the apk upgrade layer ran in '$IMAGE'..."
 
-# `apk list --upgradable` prints one line per upgradable package, each
-# containing 'upgradable from:'. Anchoring on that string (rather than counting
-# non-empty lines) keeps stray warnings from being miscounted as findings.
+# CAPTURE RAW FIRST, then inspect, then filter. The order is load-bearing and the
+# obvious form is WRONG in the fail-open direction:
 #
-# NOTE the `|| true`: `grep -c` exits 1 when the count is zero, which under
-# `set -e` would kill this script on exactly the success path.
-upgradable="$(
+#   upgradable="$(docker run … | grep 'upgradable from:' || true)"
+#   if printf '%s' "$upgradable" | grep -q 'APK_UPDATE_FAILED'; then …
+#
+# The `grep 'upgradable from:'` STRIPS the sentinel before the check that looks
+# for it, so that branch is DEAD CODE and an offline run yields empty -> count 0
+# -> "PASS". Likewise `|| true` on the pipeline swallows a `docker run` failure
+# (daemon down, no shell in the image, userns refusing --user 0) into a PASS.
+# Both were measured: this gate, built to prevent a false green, had two.
+if ! raw="$(
   docker run --rm --user 0 --entrypoint sh "$IMAGE" -c '
     apk update >/dev/null 2>&1 || { echo "APK_UPDATE_FAILED"; exit 0; }
     apk list --upgradable 2>/dev/null || true
-  ' | grep 'upgradable from:' || true
-)"
+  ' 2>/dev/null
+)"; then
+  echo "ERROR: 'docker run' failed against '$IMAGE' — this gate verified NOTHING." >&2
+  echo "       (daemon unavailable, no shell in the image, or --user 0 refused)" >&2
+  exit 1
+fi
 
-if printf '%s' "$upgradable" | grep -q 'APK_UPDATE_FAILED'; then
+if printf '%s' "$raw" | grep -q 'APK_UPDATE_FAILED'; then
   echo "ERROR: 'apk update' failed inside the image (no network egress to the Alpine mirror?)." >&2
   echo "       Refusing to report success — this gate cannot verify anything without the index." >&2
   exit 1
 fi
 
+# `apk list --upgradable` prints one line per upgradable package, each containing
+# 'upgradable from:'. Anchoring on that string (rather than counting non-empty
+# lines) keeps stray warnings from being miscounted as findings.
+# NOTE the `|| true`: `grep`/`grep -c` exit 1 on zero matches, which under
+# `set -e` would kill this script on exactly the success path.
+upgradable="$(printf '%s' "$raw" | grep 'upgradable from:' || true)"
 count="$(printf '%s' "$upgradable" | grep -c 'upgradable from:' || true)"
 
 if [ "$count" -ne 0 ]; then
@@ -87,4 +102,9 @@ if [ "$count" -ne 0 ]; then
   exit 1
 fi
 
-echo "PASS: 0 packages upgradable — the apk upgrade layer genuinely executed."
+# Deliberately does NOT say "the layer executed" — this measures world-state
+# ("nothing is upgradable now"), which is consistent with the layer having run but
+# does not prove it: when the base happens to be current, a replayed layer and a
+# genuinely-patched one are indistinguishable here. The execution-marker
+# replacement is backlogged in CLAUDE.md. Do not restore the stronger wording.
+echo "PASS: 0 packages upgradable (consistent with the apk upgrade layer having run)."

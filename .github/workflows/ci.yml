@@ -355,11 +355,21 @@ jobs:
       # NOTE: Trivy resolves a multi-arch manifest to the runner's platform, so
       # this covers linux/amd64 only — linux/arm64 is published unscanned. That
       # gap predates this change and is tracked in CLAUDE.md's Upgrade Backlog.
+      # `github.repository` preserves OWNER CASING (AndriyKalashnykov/viteapp) and
+      # OCI repository names must be lowercase, so using it directly makes trivy
+      # FATAL on "could not parse reference" — a failure indistinguishable from a
+      # CVE finding, on every release. docker/metadata-action lowercases `images:`
+      # automatically, which is why the PUSH works and only the scan would break.
+      # GHA expressions have no lowercase function; ${VAR,,} is a bash expansion.
+      - name: Resolve lowercase image repo
+        if: startsWith(github.ref, 'refs/tags/')
+        run: echo "IMAGE_REPO=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
       - name: Trivy scan of pushed image
         if: startsWith(github.ref, 'refs/tags/')
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/${{ github.repository }}@${{ steps.push.outputs.digest }}
+          image-ref: ghcr.io/${{ env.IMAGE_REPO }}@${{ steps.push.outputs.digest }}
           scanners: "vuln,secret,misconfig"
           severity: "CRITICAL,HIGH"
           exit-code: "1"

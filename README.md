@@ -74,7 +74,7 @@ Single-page React application built with Vite and served as a static bundle by n
 
 **Container runtime**
 
-Multi-stage Docker build: Node 24 Alpine builder → official `nginx:1.31-alpine` server with a DIY unprivileged-user setup. The Dockerfile drops the `user nginx;` directive from `nginx.conf`, relocates the PID file from `/run/nginx.pid` (root-only) to `/tmp/nginx.pid`, chowns `/var/cache/nginx` and `/var/log/nginx` to UID 101, and runs the entire process under `USER 101`. `apk upgrade --no-cache` patches Alpine OS CVEs.
+Multi-stage Docker build: Node 24 Alpine builder → official `nginx:1.31-alpine` server with a DIY unprivileged-user setup. The Dockerfile drops the `user nginx;` directive from `nginx.conf`, relocates the PID file from `/run/nginx.pid` (root-only) to `/tmp/nginx.pid`, chowns `/var/cache/nginx` and `/var/log/nginx` to UID 101, and runs the entire process under `USER 101`. `apk upgrade --no-cache` patches Alpine OS CVEs — but only because every cache-importing build sets `no-cache-filters: server`: `--no-cache` controls apk's *index*, not Docker's *layer* cache, so on a pinned-digest base the upgrade layer would otherwise be replayed indefinitely and ship unpatched packages behind a green build. `make check-dockerfile-stage` keeps that filter honest and `make image-apk-check` asserts the upgrade actually ran.
 
 The project previously used `nginxinc/nginx-unprivileged` but switched to the official image because the unprivileged variant lagged the official rebuild cadence by multiple patch releases (e.g. stuck at 1.29.5 while upstream shipped 1.29.6/7/8).
 
@@ -127,11 +127,12 @@ Run `make help` to see all available targets.
 | ------------------- | ----------------------------------------------------------------- |
 | `make check-node-alignment` | Verify the Node version matches across `.nvmrc` and Dockerfile (Renovate split-drift guard) |
 | `make check-minifier-deps` | Verify every minifier named in `vite.config.ts` is a declared dependency (esbuild/terser optional-peer guard) |
+| `make check-dockerfile-stage` | Verify `ci.yml`'s `no-cache-filters` matches the Dockerfile's final stage, and that every gha-cached build carries it (makes the apk-upgrade fix fail-closed) |
 | `make lint`         | Run ESLint and hadolint on source files                           |
 | `make vulncheck`    | Check for known vulnerabilities in dependencies (moderate+)       |
 | `make trivy-fs`     | Trivy filesystem scan (vuln, secret, misconfig)                   |
 | `make secrets`      | Scan repository for leaked secrets via gitleaks                   |
-| `make static-check` | Composite quality gate (check-node-alignment, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint, diagrams-check) |
+| `make static-check` | Composite quality gate (check-node-alignment, check-dockerfile-stage, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint, diagrams-check) |
 | `make mermaid-lint` | Parse every ` ```mermaid ` fenced block via pinned `minlag/mermaid-cli`   |
 | `make diagrams`     | Render PlantUML architecture diagrams (`docs/diagrams/*.puml`) to PNG via pinned `plantuml/plantuml` |
 | `make diagrams-check` | Verify committed diagram PNGs match current PlantUML source (CI drift gate) |
@@ -154,6 +155,7 @@ Run `make help` to see all available targets.
 | `make image-run`   | Run Docker container on port 8080                                          |
 | `make image-stop`  | Stop the production Docker container                                       |
 | `make image-cst`   | Container-structure-test against the built image (USER, EXPOSE, file presence) |
+| `make image-apk-check` | Assert the built image's `apk upgrade` layer actually ran (catches a replayed cache layer) |
 
 ### Utilities
 
@@ -186,13 +188,13 @@ GitHub Actions runs on every push to `main`, tags `v*`, pull requests, and `work
 | Job              | Triggers       | Steps                                                                                          |
 | ---------------- | -------------- | ---------------------------------------------------------------------------------------------- |
 | **changes**      | push, PR, tags | `dorny/paths-filter` — sets `outputs.code` true when non-doc files change (incl. `docs/diagrams/**` so the diagram drift gate runs). Tag push always true |
-| **static-check** | code change    | Install, `make static-check` (check-node-alignment, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint, diagrams-check)  |
+| **static-check** | code change    | Install, `make static-check` (check-node-alignment, check-dockerfile-stage, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint, diagrams-check)  |
 | **build**        | code change    | Install, Build (after static-check)                                                            |
 | **test**         | code change    | Install, `make coverage-check` (Vitest + 80% thresholds, after static-check)                   |
 | **e2e**          | code change    | Build image, `make e2e` — curl-based tests against nginx (health, SPA fallback, headers, hashed bundle, 404 fallback) |
 | **e2e-browser**  | code change    | Build image, `make e2e-browser` — Playwright Chromium against the built container (boot, counter, theme toggle + persistence, axe a11y in both themes, CSP). Browser binary cached. Skipped under act |
 | **lighthouse**   | code change    | Build image, `make lighthouse` — Lighthouse CI budgets (perf ≥0.9, a11y ≥0.95, best-practices ≥0.95, SEO ≥0.9) against the built container. Skipped under act |
-| **docker**       | code change    | Build-for-scan → Trivy → container-structure-test → Smoke → Multi-arch build (every push) → (on `v*` tags only) Push + Cosign signing |
+| **docker**       | code change    | Build-for-scan → Trivy → apk-upgrade mechanism gate → container-structure-test → Smoke → Multi-arch build (every push) → (on `v*` tags only) Push → Trivy scan of the pushed digest → Cosign signing |
 | **dast**         | code change    | Build → start → ZAP baseline (fail-on-warn; `.zap/baseline-rules.tsv` ignores informational rules) → upload report |
 | **ci-pass**      | all            | Aggregation gate (`if: always()`) — single required check for branch protection                 |
 

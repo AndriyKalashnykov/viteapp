@@ -5,12 +5,15 @@
 #                                 cross-origin routing (via @vitest/coverage-v8
 #                                 > vitest > jsdom > undici); kept on the 7.x
 #                                 line jsdom expects.
-#   - brace-expansion >=5.0.6   — ReDoS via large numeric range (via eslint).
+#   - brace-expansion >=5.0.7   — DoS via exponential-time expansion, GHSA-3jxr-9vmj-r5cp
+#                                 (via eslint). The prior <5.0.6 floor no longer
+#                                 clears it: the advisory's patched floor moved to
+#                                 5.0.7, so 5.0.6 is itself vulnerable now.
 # Re-evaluate when jsdom / eslint bump these transitive deps past the floors,
 # at which point the override becomes inert and can be removed.
 overrides:
   "undici@>=7.0.0 <7.28.0": "^7.28.0"
-  "brace-expansion@>=5.0.0 <5.0.6": "^5.0.6"
+  "brace-expansion@>=5.0.0 <5.0.7": "^5.0.7"
 
 # pnpm 11 REMOVED `ignoredBuiltDependencies`/`onlyBuiltDependencies` (the old
 # package.json `pnpm` array form) and replaced them with this `allowBuilds`

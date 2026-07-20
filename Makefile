@@ -317,8 +317,14 @@ ci-run: deps
 #ci-run-tag: @ Run GitHub Actions workflow locally with a tag event (exercises docker job + DAST)
 ci-run-tag: deps
 	@docker container prune -f 2>/dev/null || true
+	@# The owner casing here MUST match GitHub's real `github.repository`
+	@# (AndriyKalashnykov, not andriykalashnykov). A lowercase fixture hard-supplies
+	@# the value the real system supplies differently, so the harness becomes
+	@# structurally blind to OCI-reference casing bugs — which is exactly how a
+	@# `ghcr.io/${{ github.repository }}@digest` scan step passed locally and would
+	@# have FATAL'd on every real release. Do not "normalise" this to lowercase.
 	@TAG="$$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)"; \
-		echo '{"ref":"refs/tags/'"$$TAG"'","ref_type":"tag","repository":{"full_name":"andriykalashnykov/viteapp","name":"viteapp","owner":{"login":"andriykalashnykov"}}}' > /tmp/act-tag-event.json
+		echo '{"ref":"refs/tags/'"$$TAG"'","ref_type":"tag","repository":{"full_name":"AndriyKalashnykov/viteapp","name":"viteapp","owner":{"login":"AndriyKalashnykov"}}}' > /tmp/act-tag-event.json
 	@echo "Simulating tag push event from /tmp/act-tag-event.json"
 	@# cosign signing is the only step that legitimately fails under act (no
 	@# OIDC issuer locally). The act-runner exits 0 by ignoring exit code 137

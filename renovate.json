@@ -132,6 +132,16 @@
       "description": "Throttle the local Renovate CLI pin (RENOVATE_VERSION in the Makefile, custom.regex manager). Renovate publishes to npm several times a day; the npm manager's minimumReleaseAge does NOT cover a custom.regex pin, so this self-bump generated near-daily PR noise. matchDepNames matches regardless of manager. 7 days keeps this dev-only tool roughly weekly.",
       "matchDepNames": ["renovate"],
       "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "Hold typescript on the 6.x line. typescript-eslint declares `peerDependencies.typescript: >=4.8.4 <6.1.0` — still true at 8.65.0, i.e. NO release accepts TS 7 — and TS 7's Go-native compiler removed the internals @typescript-eslint/typescript-estree reaches into, so `make lint` dies with `TypeError: Cannot read properties of undefined (reading 'Cjs')`. Note a peer-range violation is only a WARNING to pnpm, so the bump installs cleanly and the lockfile updates; nothing fails until lint actually runs typescript-eslint against the TS API. Measured 2026-07-20 on the TS 7.0.2 branch: `tsc --noEmit`, `pnpm build` and all 15 unit tests PASS — typescript-eslint is the SOLE blocker, so this is a HOLD, not a migration. REMOVE this cap once typescript-eslint widens its peer range to accept TS 7; the group below then lands both as a single PR.",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7.0.0"
+    },
+    {
+      "description": "Group typescript with typescript-eslint. They are a version-locked pair (typescript-eslint pins a peer range on typescript and reaches into compiler internals), so once the cap above is removed they must move as a UNIT — otherwise Renovate splits them into two individually-unmergeable PRs that fail DIFFERENTLY (the typescript-only bump fails lint; a typescript-eslint-only bump can't lift the peer range on its own). Placed after the dev-dependencies group so this groupName wins for these two; dev-dependencies' `automerge: true` still applies, which is what we want once the pair is mergeable.",
+      "matchPackageNames": ["typescript", "typescript-eslint"],
+      "groupName": "typescript"
     }
   ]
 }

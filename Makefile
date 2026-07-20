@@ -317,12 +317,16 @@ ci-run: deps
 #ci-run-tag: @ Run GitHub Actions workflow locally with a tag event (exercises docker job + DAST)
 ci-run-tag: deps
 	@docker container prune -f 2>/dev/null || true
-	@# The owner casing here MUST match GitHub's real `github.repository`
-	@# (AndriyKalashnykov, not andriykalashnykov). A lowercase fixture hard-supplies
-	@# the value the real system supplies differently, so the harness becomes
-	@# structurally blind to OCI-reference casing bugs — which is exactly how a
-	@# `ghcr.io/${{ github.repository }}@digest` scan step passed locally and would
-	@# have FATAL'd on every real release. Do not "normalise" this to lowercase.
+	@# Owner casing matches production (AndriyKalashnykov) for faithfulness, but be
+	@# aware it changes NOTHING about `github.repository`: act derives that from the
+	@# GIT REMOTE, not from this event payload (measured 2026-07-20 with act 0.2.89 —
+	@# `github.repository` and $$GITHUB_REPOSITORY both read AndriyKalashnykov/viteapp
+	@# regardless of what `repository.full_name` says here, which only drives
+	@# `github.event.repository.full_name`). So do NOT rely on this fixture to
+	@# exercise OCI-reference casing; act was already supplying the right casing.
+	@# The reason `make ci-run-tag` cannot catch a bad `image-ref` in the post-push
+	@# scan is different: the push step yields no digest under act, so the scan step
+	@# never resolves a ref at all.
 	@TAG="$$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)"; \
 		echo '{"ref":"refs/tags/'"$$TAG"'","ref_type":"tag","repository":{"full_name":"AndriyKalashnykov/viteapp","name":"viteapp","owner":{"login":"AndriyKalashnykov"}}}' > /tmp/act-tag-event.json
 	@echo "Simulating tag push event from /tmp/act-tag-event.json"

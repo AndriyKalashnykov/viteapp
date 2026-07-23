@@ -144,8 +144,8 @@ Run `make help` to see all available targets.
 | Target        | Description                                                                              |
 | ------------- | ---------------------------------------------------------------------------------------- |
 | `make ci`     | Run full local CI pipeline (install, static-check, coverage-check, build, deps-prune-check) |
-| `make ci-run`     | Run GitHub Actions workflow locally via [act](https://github.com/nektos/act) (push event) |
-| `make ci-run-tag` | Run CI with a tag event via act (exercises docker job + DAST gate)                        |
+| `make ci-run`     | Run CI locally via [act](https://github.com/nektos/act) (push event; heavy jobs are tag-only, so they skip) |
+| `make ci-run-tag` | Run CI with a tag event via act (exercises the tag-gated docker + e2e jobs)               |
 
 ### Docker
 
@@ -183,7 +183,7 @@ pnpm prettier:diff    # Check formatting without writing
 
 ## CI/CD
 
-GitHub Actions runs on every push to `main`, tags `v*`, pull requests, and `workflow_call` (reusable).
+GitHub Actions runs on every push to `main`, tags `v*`, pull requests, and `workflow_call` (reusable). Routine pushes/PRs run only `static-check` + `build` + `test`; the container-based jobs (`e2e`, `e2e-browser`, `docker`, `dast`, `lighthouse`) are gated to **tag push (`v*`) only** — a deliberate speed tradeoff, so run those targets locally before pushing container/nginx/UI changes.
 
 | Job              | Triggers       | Steps                                                                                          |
 | ---------------- | -------------- | ---------------------------------------------------------------------------------------------- |
@@ -191,11 +191,11 @@ GitHub Actions runs on every push to `main`, tags `v*`, pull requests, and `work
 | **static-check** | code change    | Install, `make static-check` (check-node-alignment, check-dockerfile-stage, check-minifier-deps, format-check, lint, vulncheck, trivy-fs, secrets, mermaid-lint, diagrams-check)  |
 | **build**        | code change    | Install, Build (after static-check)                                                            |
 | **test**         | code change    | Install, `make coverage-check` (Vitest + 80% thresholds, after static-check)                   |
-| **e2e**          | code change    | Build image, `make e2e` — curl-based tests against nginx (health, SPA fallback, headers, hashed bundle, 404 fallback) |
-| **e2e-browser**  | code change    | Build image, `make e2e-browser` — Playwright Chromium against the built container (boot, counter, theme toggle + persistence, axe a11y in both themes, CSP). Browser binary cached. Skipped under act |
-| **lighthouse**   | code change    | Build image, `make lighthouse` — Lighthouse CI budgets (perf ≥0.9, a11y ≥0.95, best-practices ≥0.95, SEO ≥0.9) against the built container. Skipped under act |
-| **docker**       | code change    | Build-for-scan → Trivy → apk-upgrade mechanism gate → container-structure-test → Smoke → Multi-arch build (every push) → (on `v*` tags only) Push → Trivy scan of the pushed digest → Cosign signing |
-| **dast**         | code change    | Build → start → ZAP baseline (fail-on-warn; `.zap/baseline-rules.tsv` ignores informational rules) → upload report |
+| **e2e**          | **tag `v*`**   | Build image, `make e2e` — curl-based tests against nginx (health, SPA fallback, headers, hashed bundle, 404 fallback) |
+| **e2e-browser**  | **tag `v*`**   | Build image, `make e2e-browser` — Playwright Chromium against the built container (boot, counter, theme toggle + persistence, axe a11y in both themes, CSP). Browser binary cached. Skipped under act |
+| **lighthouse**   | **tag `v*`**   | Build image, `make lighthouse` — Lighthouse CI budgets (perf ≥0.9, a11y ≥0.95, best-practices ≥0.95, SEO ≥0.9) against the built container. Skipped under act |
+| **docker**       | **tag `v*`**   | Build-for-scan → Trivy → apk-upgrade mechanism gate → container-structure-test → Smoke → Multi-arch build → Push → Trivy scan of the pushed digest → Cosign signing (whole job tag-only) |
+| **dast**         | **tag `v*`**   | Build → start → ZAP baseline (fail-on-warn; `.zap/baseline-rules.tsv` ignores informational rules) → upload report |
 | **ci-pass**      | all            | Aggregation gate (`if: always()`) — single required check for branch protection                 |
 
 A [diagram-regen workflow](.github/workflows/diagram-regen.yml) regenerates the committed C4 PNG on a render-affecting Renovate bump (the C4-PlantUML `!include` version or `PLANTUML_VERSION`) or on demand via the `regen-diagrams` label — because Renovate can't run `make diagrams` itself. It commits the corrected PNG back; the merge is finished manually (the Repository Ruleset blocks the bot's commit-back CI).
@@ -206,7 +206,7 @@ Docker images are pushed to `ghcr.io` as multi-arch (`linux/amd64` + `linux/arm6
 
 ### Pre-push image hardening
 
-The `docker` job runs the following gates **before** any image is pushed to GHCR. Any failure blocks the release.
+At **release (tag `v*`) time**, the `docker` job runs gates 1–4 and 6–8 below in order **before** it pushes/signs the image — any failure fails the job and leaves the image unpushed and unsigned. The **ZAP DAST scan (5)** runs in a **parallel** `dast` job: it reds the tag's CI (and the `ci-pass` check) but does not itself gate the `docker` push.
 
 | #   | Gate                                 | Catches                                            | Tool                                             |
 | --- | ------------------------------------ | -------------------------------------------------- | ------------------------------------------------ |
@@ -215,7 +215,7 @@ The `docker` job runs the following gates **before** any image is pushed to GHCR
 | 3   | **Container structure test**         | USER 101, EXPOSE 8080, file presence, nginx -t     | [container-structure-test](https://github.com/GoogleContainerTools/container-structure-test) |
 | 4   | **Smoke test**                       | Container boots and serves `/internal/isalive`     | `docker run` + `curl` health probe               |
 | 5   | **ZAP baseline DAST scan**           | Missing security headers, misconfigs, info leaks   | [OWASP ZAP](https://www.zaproxy.org/) baseline (cached image, fail-on-warn, parallel `dast` job) |
-| 6   | Multi-arch build (every push)        | arm64 cross-compile regressions surface pre-tag    | `docker/build-push-action` (push gated on tag)   |
+| 6   | Multi-arch build (on tag)            | arm64 cross-compile regressions caught at release  | `docker/build-push-action` (whole docker job tag-gated) |
 | 7   | Multi-arch push (tag only)           | Publishes for both `linux/amd64` and `linux/arm64` | `docker/build-push-action` `push: true`          |
 | 8   | **Cosign keyless OIDC signing**      | Sigstore signature on the manifest digest          | `sigstore/cosign-installer` + `cosign sign`      |
 

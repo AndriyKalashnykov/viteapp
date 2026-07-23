@@ -304,17 +304,26 @@ release:
 		git push origin $$newtag && \
 		echo "Done."'
 
-#ci-run: @ Run GitHub Actions workflow locally using act (simulates push to main)
+#ci-run: @ Run CI locally via act (push event — heavy jobs are tag-only, so they SKIP)
 # Use bash-array `--secret KEY` env-only form when secrets are eventually
 # needed — never `--secret KEY=$$VAR` (value would land in `ps -ef` argv).
 # `--var ACT=true` powers `if: ${{ vars.ACT != 'true' }}` job/step gates
-# (dast skip, etc.). Real GitHub Actions runs see `vars.ACT` unset.
+# (e2e-browser/dast/lighthouse skip). Real GitHub Actions runs see `vars.ACT` unset.
+# NOTE: e2e/e2e-browser/docker/dast/lighthouse are tag-only (gated on
+# `startsWith(github.ref,'refs/tags/')`), so this PUSH-event run exercises only
+# changes/static-check/build/test. The container + curl-e2e path is
+# `make ci-run-tag`; e2e-browser/dast/lighthouse never run under act at all —
+# run `make e2e-browser` / `make dast` / `make lighthouse` individually.
 ci-run: deps
 	@docker container prune -f 2>/dev/null || true
 	@docker rm -f viteapp-test viteapp-smoke viteapp-dast 2>/dev/null || true
 	@act push --container-architecture linux/amd64 --artifact-server-path /tmp/act-artifacts --var ACT=true
 
-#ci-run-tag: @ Run GitHub Actions workflow locally with a tag event (exercises docker job + DAST)
+#ci-run-tag: @ Run CI locally with a tag event (exercises the tag-gated docker + e2e jobs)
+# Under a tag ref, `docker` and `e2e` (tag-gated, no ACT guard) RUN; the
+# `vars.ACT`-guarded jobs (e2e-browser, dast, lighthouse) stay SKIPPED under act
+# regardless of the tag — so this does NOT exercise DAST/browser/lighthouse.
+# Run those individually (`make dast` / `make e2e-browser` / `make lighthouse`).
 ci-run-tag: deps
 	@docker container prune -f 2>/dev/null || true
 	@# Owner casing matches production (AndriyKalashnykov) for faithfulness, but be

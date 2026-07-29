@@ -14,8 +14,10 @@
   "enabledManagers": ["npm", "github-actions", "dockerfile", "mise", "custom.regex"],
   "ignoreTests": false,
   "lockFileMaintenance": {
+    "description": "Refresh the lockfile DAILY, not weekly. A lockfile refresh is the actual remedy when `pnpm audit` reddens on a transitive CVE (see pnpm-workspace.yaml: the overrides' caret targets already admit patched versions, so the lockfile is the only thing pinning an old one). Renovate's default schedule for lockFileMaintenance is weekly ('before 4am on monday'); combined with npm.minimumReleaseAge (3 days) that left a window of up to ~10 days in which a newly-disclosed advisory against an UNCHANGED main reddens main and every open PR. Measured 2026-07-29: main sat red for 4 days on GHSA-mh99-v99m-4gvg with 7 PRs blocked behind it. Daily cuts the refresh half of that window to ~1 day. NOTE this does not shorten the 3-day cooldown, and it is NOT a detection mechanism — CI has no schedule trigger, so a fresh advisory still produces no signal until some PR runs.",
     "enabled": true,
-    "automerge": true
+    "automerge": true,
+    "schedule": ["* 0-4 * * *"]
   },
   "npm": {
     "minimumReleaseAge": "3 days"

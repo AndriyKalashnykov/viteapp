@@ -1,19 +1,41 @@
 # pnpm 10+ reads `overrides` from pnpm-workspace.yaml, NOT from package.json's
-# `pnpm` field (silently ignored there). These pin freshly-disclosed-CVE
-# transitive dependencies to their patched floors:
-#   - undici >=7.28.0           — TLS cert-validation bypass + WebSocket DoS +
-#                                 cross-origin routing (via @vitest/coverage-v8
-#                                 > vitest > jsdom > undici); kept on the 7.x
-#                                 line jsdom expects.
-#   - brace-expansion >=5.0.7   — DoS via exponential-time expansion, GHSA-3jxr-9vmj-r5cp
-#                                 (via eslint). The prior <5.0.6 floor no longer
-#                                 clears it: the advisory's patched floor moved to
-#                                 5.0.7, so 5.0.6 is itself vulnerable now.
-# Re-evaluate when jsdom / eslint bump these transitive deps past the floors,
-# at which point the override becomes inert and can be removed.
+# `pnpm` field (silently ignored there). These floor two CVE-bearing transitive
+# dependencies:
+#   - undici           — TLS cert-validation bypass + WebSocket DoS +
+#                        cross-origin routing. Declared by jsdom (`^7.25.0`,
+#                        via @vitest/coverage-v8 > vitest > jsdom); kept on the
+#                        7.x line jsdom requires.
+#   - brace-expansion  — DoS via unbounded expansion (GHSA-3jxr-9vmj-r5cp, then
+#                        GHSA-mh99-v99m-4gvg). Declared as `^5.0.5` by minimatch,
+#                        eslint, @eslint/config-array and typescript-estree.
+#
+# HOW THE KEY MATCHES — this is not what it looks like, and getting it wrong has
+# cost three incidents. pnpm compares the override KEY against the DEPENDENT'S
+# DECLARED RANGE using `semver.intersects`, NEVER against the resolved version
+# (pnpm 11.15.1, dist/pnpm.mjs: `overrideDeps` iterates `Object.entries(deps)` —
+# a manifest map of name -> declared range — and filters with
+# `isIntersectingRange(targetPkg.bareSpecifier, bareSpecifier)`).
+#
+# Two consequences:
+#  1. A CARET TARGET AUTO-HEALS. `^5.0.8` already admits 5.0.9, 5.1.0, ... so a
+#     new advisory whose patched floor moves WITHIN 5.x needs NO edit here. When
+#     `pnpm audit` goes red on one of these, the remedy is a LOCKFILE REFRESH
+#     (`pnpm update <pkg>`, or Renovate's lockFileMaintenance) — NOT a floor
+#     bump. Editing an override only appeared to fix the previous two incidents
+#     because pnpm records `overrides:` inside pnpm-lock.yaml, so changing one
+#     invalidates the lockfile and forces a re-resolve: it was a cache-bust, not
+#     a security pin.
+#  2. THE KEY MUST NOT CARRY AN UPPER BOUND. A ceiling can stop INTERSECTING the
+#     dependent's declared range and the override then silently stops applying —
+#     e.g. a key of `>=5.0.0 <5.0.7` against a future minimatch declaring
+#     `^5.1.0` intersects nothing. The `^X.0.0` keys below cannot fail that way.
+#
+# Re-evaluate only when a dependent moves to a NEW MAJOR (jsdom to undici 8.x,
+# minimatch to brace-expansion 6.x); at that point the key stops intersecting by
+# design and the override should be retargeted or removed.
 overrides:
-  "undici@>=7.0.0 <7.28.0": "^7.28.0"
-  "brace-expansion@>=5.0.0 <5.0.7": "^5.0.7"
+  "undici@^7.0.0": "^7.29.0"
+  "brace-expansion@^5.0.0": "^5.0.8"
 
 # pnpm 11 REMOVED `ignoredBuiltDependencies`/`onlyBuiltDependencies` (the old
 # package.json `pnpm` array form) and replaced them with this `allowBuilds`

@@ -1,19 +1,85 @@
 # pnpm 10+ reads `overrides` from pnpm-workspace.yaml, NOT from package.json's
-# `pnpm` field (silently ignored there). These pin freshly-disclosed-CVE
-# transitive dependencies to their patched floors:
-#   - undici >=7.28.0           — TLS cert-validation bypass + WebSocket DoS +
-#                                 cross-origin routing (via @vitest/coverage-v8
-#                                 > vitest > jsdom > undici); kept on the 7.x
-#                                 line jsdom expects.
-#   - brace-expansion >=5.0.7   — DoS via exponential-time expansion, GHSA-3jxr-9vmj-r5cp
-#                                 (via eslint). The prior <5.0.6 floor no longer
-#                                 clears it: the advisory's patched floor moved to
-#                                 5.0.7, so 5.0.6 is itself vulnerable now.
-# Re-evaluate when jsdom / eslint bump these transitive deps past the floors,
-# at which point the override becomes inert and can be removed.
+# `pnpm` field (silently ignored there). These floor two CVE-bearing transitive
+# dependencies:
+#   - undici           — TLS cert-validation bypass + WebSocket DoS +
+#                        cross-origin routing. Declared `^7.25.0` by jsdom,
+#                        which is a DIRECT devDependency of this package
+#                        (vitest lists jsdom only as an optional peer, so the
+#                        chain is NOT "@vitest/coverage-v8 > vitest > jsdom" —
+#                        an error carried in this comment until 2026-07-29).
+#                        Kept on the 7.x line jsdom requires.
+#   - brace-expansion  — DoS via unbounded expansion (GHSA-3jxr-9vmj-r5cp, then
+#                        GHSA-mh99-v99m-4gvg). Declared `^5.0.5` in the
+#                        `dependencies` of FOUR packages — minimatch, eslint,
+#                        @eslint/config-array and typescript-estree (verified
+#                        by reading each manifest; the lockfile's deduped
+#                        snapshot graph shows only the minimatch edge, so do
+#                        not re-derive this from the lockfile alone).
+#
+# MEASURED 2026-07-29 — BOTH OVERRIDES ARE CURRENTLY REDUNDANT. Deleting them
+# entirely and re-resolving yields the IDENTICAL versions (brace-expansion
+# 5.0.8, undici 7.29.0), because every declarer's own caret already admits the
+# patched release. They are kept only as a FLOOR against a future dependent
+# declaring an exact or tilde range that excludes the patched version — the one
+# case where plain resolution can land below it. If that case never appears,
+# deleting them is the lower-risk option. (Verify with: strip the `overrides:`
+# block, `pnpm install --lockfile-only`, compare resolved versions — assert the
+# strip actually landed, or the test is vacuous.)
+#
+# HOW THE KEY MATCHES — this is not what it looks like, and getting it wrong has
+# cost three incidents. pnpm compares the override KEY against the DEPENDENT'S
+# DECLARED RANGE using `semver.intersects`, NEVER against the resolved version
+# (pnpm 11.15.1, dist/pnpm.mjs: `overrideDeps` iterates `Object.entries(deps)` —
+# a manifest map of name -> declared range — and filters with
+# `isIntersectingRange(targetPkg.bareSpecifier, bareSpecifier)`).
+#
+# Two consequences:
+#  1. A CARET TARGET AUTO-HEALS. `^5.0.8` already admits 5.0.9, 5.1.0, ... so a
+#     new advisory whose patched floor moves WITHIN 5.x needs NO edit here. When
+#     `pnpm audit` goes red on one of these, the remedy is a LOCKFILE REFRESH
+#     (`pnpm update <pkg>`, or Renovate's lockFileMaintenance) — NOT a floor
+#     bump. Editing an override only appeared to fix the previous two incidents
+#     because pnpm records `overrides:` inside pnpm-lock.yaml, so changing one
+#     invalidates the lockfile and forces a re-resolve: it was a cache-bust, not
+#     a security pin.
+#  2. THE KEY SHOULD NOT CARRY AN UPPER BOUND — but for a plainer reason than
+#     "it might stop matching". A ceiling encodes a STALE ADVISORY RANGE that
+#     has to be hand-edited on every floor move; that hand-edit is the ritual
+#     described in (1), and it is what these keys exist to stop needing. (The
+#     ceiling CAN also stop intersecting — `>=5.0.0 <5.0.7` vs a future
+#     minimatch declaring `^5.1.0` intersects nothing — but that is benign:
+#     it happens exactly when the declarer's own floor has risen ABOVE the
+#     vulnerable range, i.e. when the override is already redundant. Do not
+#     cite it as a security hazard.)
+#     Known cost of the broader key, accepted: `^5.0.0` matches a future
+#     declarer of, say, `^5.2.0` (the old key did not) and would rewrite it to
+#     `^5.0.8`. A fresh resolve still picks the highest 5.x, so this is benign
+#     at resolve time; under --frozen-lockfile it could pin below that
+#     declarer's floor.
+#
+# TARGETS: `^5.0.8` IS an advisory floor (GHSA-mh99-v99m-4gvg's patched
+# version). `^7.29.0` is NOT — undici 7.28.0 has no open advisory; that number
+# is just the version resolved on 2026-07-29. Do not read it as a security
+# floor, and do not re-encode a freshly-resolved version as one: that is the
+# same ritual as (1).
+#
+# Re-evaluate when a dependent moves to a NEW MAJOR (jsdom to undici 8.x,
+# minimatch to brace-expansion 6.x) — the key then stops intersecting by design
+# and the override should be retargeted or removed. renovate.json caps BOTH
+# targets below the next major, because the key would otherwise still intersect
+# a 5.x/7.x declarer and force a major onto it.
 overrides:
-  "undici@>=7.0.0 <7.28.0": "^7.28.0"
-  "brace-expansion@>=5.0.0 <5.0.7": "^5.0.7"
+  "undici@^7.0.0": "^7.29.0"
+  "brace-expansion@^5.0.0": "^5.0.8"
+
+# Supply-chain cooldown for LOCKFILE RESOLUTION. Renovate's
+# npm.minimumReleaseAge is a LOOKUP-phase filter, and a lockFileMaintenance
+# refresh performs no lookup — pnpm picks the versions — so that setting cannot
+# gate what a refresh resolves. With lockFileMaintenance now DAILY and
+# automerged, this pnpm-side knob is what keeps a minutes-old transitive
+# release from being resolved and auto-merged. 4320 minutes = 3 days, matching
+# the Renovate policy for direct deps.
+minimumReleaseAge: 4320
 
 # pnpm 11 REMOVED `ignoredBuiltDependencies`/`onlyBuiltDependencies` (the old
 # package.json `pnpm` array form) and replaced them with this `allowBuilds`

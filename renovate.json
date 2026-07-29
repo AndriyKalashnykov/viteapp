@@ -14,8 +14,10 @@
   "enabledManagers": ["npm", "github-actions", "dockerfile", "mise", "custom.regex"],
   "ignoreTests": false,
   "lockFileMaintenance": {
+    "description": "Refresh the lockfile DAILY, not weekly. A lockfile refresh is the actual remedy when `pnpm audit` reddens on a transitive CVE (see pnpm-workspace.yaml: the overrides' caret targets already admit patched versions, so the lockfile is the only thing pinning an old one). Renovate's default lockFileMaintenance schedule is weekly ('before 4am on monday'), which alone left a window of up to ~7 days in which a newly-disclosed advisory against an UNCHANGED main reddens main and every open PR — measured 2026-07-29: main sat red 4 days on GHSA-mh99-v99m-4gvg with 7 PRs blocked. Daily cuts that to ~1 day. TWO THINGS THIS IS NOT: (1) npm.minimumReleaseAge does NOT add to that window and does NOT gate a lockfile refresh — it is a LOOKUP-phase filter and a refresh performs no lookup, so pnpm chooses the versions; the cooldown for refreshes is `minimumReleaseAge` in pnpm-workspace.yaml, which exists precisely because this schedule is daily AND automerged. (2) It is NOT detection — ci.yml has no schedule trigger, so a fresh advisory still produces no signal until some PR runs. The window is UTC (no timezone key), i.e. 00:00-04:59 UTC; the cron minute field MUST be `*` (Renovate rejects minute granularity).",
     "enabled": true,
-    "automerge": true
+    "automerge": true,
+    "schedule": ["* 0-4 * * *"]
   },
   "npm": {
     "minimumReleaseAge": "3 days"
@@ -75,6 +77,11 @@
       "description": "Pin the undici override to the 7.x line. The override (pnpm-workspace.yaml) clears CVEs in undici 7.x, which is the line jsdom 29.1.1 hard-requires (`undici/lib/handler/wrap-handler.js`); undici v8 moved that path and breaks the vitest/jsdom test runtime. Remove this cap when jsdom ships a release that consumes undici >= 8.",
       "matchPackageNames": ["undici"],
       "allowedVersions": "<8"
+    },
+    {
+      "description": "Cap the brace-expansion OVERRIDE TARGET below 6.x. Renovate extracts each pnpm-workspace.yaml override as a dep whose packageName is the target package, so it will propose bumping the target when brace-expansion 6.0.0 publishes — and root automerge:true applies (the dev-dependencies group does not match; the depType is pnpm-workspace.overrides). Because the ceiling-free key `brace-expansion@^5.0.0` still intersects the declarers' `^5.0.5`, an unrestrained target bump would force a MAJOR onto four packages that declared 5.x, breaking them at runtime while the lockfile looks fine. Mirrors the undici <8 cap above. Lift only after confirming every declarer (minimatch, eslint, @eslint/config-array, typescript-estree) accepts 6.x.",
+      "matchPackageNames": ["brace-expansion"],
+      "allowedVersions": "<6"
     },
     {
       "description": "Group GitHub Actions into one PR",

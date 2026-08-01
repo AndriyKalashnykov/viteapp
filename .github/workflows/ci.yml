@@ -68,7 +68,7 @@ jobs:
       # this, the Makefile's mise-install is CI-guarded off and `make lint`
       # fails with `hadolint: No such file or directory`.
       - name: Set up mise
-        uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4.2.3
+        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
         with:
           install: true
           cache: true
@@ -303,7 +303,7 @@ jobs:
       # mise installs the version pinned in .mise.toml so Renovate's mise
       # manager is the single source of truth (no inline-version drift).
       - name: Set up mise
-        uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4.2.3
+        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
         with:
           install: true
           cache: true

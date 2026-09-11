@@ -89,3 +89,6 @@ minimumReleaseAge: 4320
 # ERR_PNPM_IGNORED_BUILDS prompt.
 allowBuilds:
   esbuild: false
+minimumReleaseAgeExclude:
+  # Renovate security update: vitest@4.1.11
+  - vitest@4.1.11

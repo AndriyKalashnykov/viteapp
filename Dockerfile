@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
+# syntax=docker/dockerfile:1@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 # https://hub.docker.com/_/node/tags
 FROM node:24.17.0-alpine@sha256:9e04e3f9c9164cb2c913593ba0733fbd0caf4e9bea474d743ca8a32aa36d98c9 AS builder
 # Corepack reads the pnpm version from package.json's `packageManager` field
@@ -26,7 +26,7 @@ RUN pnpm build
 # 1.29.6/7/8). `apk upgrade --no-cache` patches any HIGH/CRITICAL Alpine CVEs
 # fixed upstream but not yet rebuilt into the base image. Required to keep the
 # Trivy pre-push gate clean.
-FROM nginx:1.31.3-alpine@sha256:1d40e3eb3bf4f138de1d67193f2aa5309fcaf343eb5ffadbf5e9439de1eb1ebb AS server
+FROM nginx:1.31.5-alpine@sha256:bd43d3d8fdbbe597c36fea489886796466a9ea5b662e8c50897d53e190c88a3d AS server
 # Drop the `user nginx;` directive (we run the entire process as UID 101 via
 # the USER instruction below — no setuid required) and relocate the PID file
 # to /tmp because /run is not writable by an unprivileged user. Default temp

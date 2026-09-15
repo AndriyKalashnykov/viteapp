@@ -45,5 +45,5 @@ EXPOSE 8080
 # nginx `listen 8080;` binds IPv4 (0.0.0.0) only → Connection refused → perpetual
 # `unhealthy`. CI never caught this because e2e/smoke hit the host-published port.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:8080/internal/isalive || exit 1
+  CMD ["wget", "-qO-", "http://127.0.0.1:8080/internal/isalive"]
 CMD ["nginx", "-g", "daemon off;"]

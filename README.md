@@ -17,7 +17,7 @@ A Vite + React + TypeScript SPA delivered as a hardened multi-arch (`amd64`/`arm
 | Framework        | React 19                                                    |
 | Build tool       | Vite 8 (Rolldown bundler, terser minifier)                  |
 | Testing          | Vitest 5 + @testing-library/react 16 + jsdom + v8 coverage (80% thresholds) |
-| Runtime          | Node.js 24.17.0 (pinned via `.nvmrc`)                       |
+| Runtime          | Node.js 24.21.0 (pinned via `.nvmrc`)                       |
 | Package manager  | pnpm 12 (pinned via `package.json` `packageManager`)        |
 | Version manager  | mise (reads `.nvmrc`; pins act/hadolint/trivy/gitleaks/container-structure-test in `.mise.toml`) |
 | Container        | Official nginx (alpine), DIY unprivileged UID 101 (multi-arch amd64/arm64) |

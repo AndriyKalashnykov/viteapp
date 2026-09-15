@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Development Commands
 
 **Version manager:** mise (portfolio-wide; reads `.nvmrc` natively + binary tools pinned in `.mise.toml`, auto-installed by `make deps`)
-**Package manager:** pnpm 11 (via corepack; version pinned in `package.json` `packageManager`). Dependency `overrides` and the `allowBuilds` build-script policy live in `pnpm-workspace.yaml` — pnpm 11 removed the legacy `pnpm.overrides` / `pnpm.ignoredBuiltDependencies` package.json fields.
+**Package manager:** pnpm 12 (via corepack; version pinned in `package.json` `packageManager`). Dependency `overrides` and the `allowBuilds` build-script policy live in `pnpm-workspace.yaml` — pnpm 11 removed the legacy `pnpm.overrides` / `pnpm.ignoredBuiltDependencies` package.json fields.
 
 ```bash
 make deps              # Install mise + Node + pnpm + binary tools (act, hadolint, trivy, gitleaks, container-structure-test) from .mise.toml

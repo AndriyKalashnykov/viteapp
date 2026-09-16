@@ -26,7 +26,7 @@ RUN pnpm build
 # 1.29.6/7/8). `apk upgrade --no-cache` patches any HIGH/CRITICAL Alpine CVEs
 # fixed upstream but not yet rebuilt into the base image. Required to keep the
 # Trivy pre-push gate clean.
-FROM nginx:1.31.5-alpine@sha256:bd43d3d8fdbbe597c36fea489886796466a9ea5b662e8c50897d53e190c88a3d AS server
+FROM nginx:1.31.6-alpine@sha256:eb37f58646a901dc7727cf448cae36daaefaba79de33b5058dab79aa4c04aefb AS server
 # Drop the `user nginx;` directive (we run the entire process as UID 101 via
 # the USER instruction below — no setuid required) and relocate the PID file
 # to /tmp because /run is not writable by an unprivileged user. Default temp

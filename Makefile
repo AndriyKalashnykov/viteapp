@@ -16,7 +16,7 @@ MERMAID_CLI_VERSION := 11.17.1
 # renovate: datasource=docker depName=plantuml/plantuml
 PLANTUML_VERSION    := 1.2026.8
 # renovate: datasource=npm depName=renovate
-RENOVATE_VERSION    := 44.74.0
+RENOVATE_VERSION    := 44.83.0
 # renovate: datasource=npm depName=depcheck
 DEPCHECK_VERSION    := 1.4.7
 # renovate: datasource=npm depName=@lhci/cli

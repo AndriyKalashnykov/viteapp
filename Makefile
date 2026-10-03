@@ -12,11 +12,11 @@ NODE_VERSION := $(shell cat .nvmrc 2>/dev/null || echo 24)
 # renovate: datasource=github-releases depName=zaproxy/zaproxy extractVersion=^v(?<version>.*)$
 ZAP_VERSION         := 2.17.0
 # renovate: datasource=docker depName=minlag/mermaid-cli
-MERMAID_CLI_VERSION := 12.0.0
+MERMAID_CLI_VERSION := 12.0.1
 # renovate: datasource=docker depName=plantuml/plantuml
 PLANTUML_VERSION    := 1.2026.8
 # renovate: datasource=npm depName=renovate
-RENOVATE_VERSION    := 44.104.0
+RENOVATE_VERSION    := 44.115.10
 # renovate: datasource=npm depName=depcheck
 DEPCHECK_VERSION    := 1.4.7
 # renovate: datasource=npm depName=@lhci/cli

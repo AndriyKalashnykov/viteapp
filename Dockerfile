@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 # https://hub.docker.com/_/node/tags
-FROM node:24.21.0-alpine@sha256:333f6b3eca25980d5682c26207665b93c9417786b21760b2764d5821d9704c8a AS builder
+FROM node:26.12.1-alpine@sha256:65fb44a19eb983bc475aebef8ca3416da172e5b7b0e52418cca100997959ca6e AS builder
 # Corepack reads the pnpm version from package.json's `packageManager` field
 # (single source of truth) — no hardcoded version here. COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 # suppresses corepack's interactive download-consent prompt so the first pnpm
